@@ -4,4 +4,3 @@
 *.bin
 *.d
 *.o
-/libopencm3/*
