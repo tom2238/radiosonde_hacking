@@ -5,4 +5,4 @@
 *.d
 *.o
 /libopencm3
-libopencm3
+libopencm3/
