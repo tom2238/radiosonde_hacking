@@ -22,7 +22,7 @@ BINARY = main
 OBJS += init.o
 
 OPENCM3_DIR = ../../libopencm3
-LDSCRIPT = $(OPENCM3_DIR)/lib/stm32f100x8.ld
+LDSCRIPT = ../../linker/stm32f100x8.ld
 
 include ../../common.f1.mk
 
