@@ -38,24 +38,27 @@
  * sram:       8192
  * chipid:     0x0420
  * descr:      F1xx Value Line
+ * In case of problem, try connect under reset
  */
 
 // Global LibOpenCM3 libraries
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/timer.h>
+#include <libopencm3/cm3/nvic.h>
 // STM32F100 libraries
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
+#include <libopencm3/stm32/f1/timer.h>
 // Another libraries
 #include <stdint.h>
 #include "init.h"
-
-void delay(uint64_t duration);
 
 int main(void) {
     // Setup registers
     clock_setup();
     gpio_setup();
+    systick_setup();
     // Set different leds state
     gpio_clear(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
@@ -66,22 +69,14 @@ int main(void) {
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
-        delay(500000);
+        delay(250);
 
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
-        delay(500000);
+        delay(750);
 	}
 
 	return 0;
-}
-
-// Delay a given number of CPU cycles in a blocking manner
-void delay(uint64_t duration) {
-    volatile unsigned int i;
-    for(i=0;i<duration;i++) {
-        __asm__("nop");
-    }
 }
