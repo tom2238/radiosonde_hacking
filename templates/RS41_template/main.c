@@ -38,6 +38,7 @@
  * sram:       8192
  * chipid:     0x0420
  * descr:      F1xx Value Line
+ * In case of problem, try connect under reset
  */
 
 // Global LibOpenCM3 libraries
