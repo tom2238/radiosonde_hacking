@@ -6,3 +6,4 @@
 ## Projects
 * blink - Blinking with two onboard leds using stupid delay loop
 * fancyblink - Blinking with two onboard leds using timer and millis counter
+* si4032_cw - ISM band CW transmitter using Si4032 onboard chip

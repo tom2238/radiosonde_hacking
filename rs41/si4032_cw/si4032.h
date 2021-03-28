@@ -68,6 +68,16 @@
 #define SI4032_REG_IO_PORT_CONFIG 0x0E
 #define SI4032_REG_FIFO_ACCESS 0x7F
 
+// TX power
+#define SI4032_TX_POWER_1_DBM 0
+#define SI4032_TX_POWER_2_DBM 1
+#define SI4032_TX_POWER_5_DBM 2
+#define SI4032_TX_POWER_8_DBM 3
+#define SI4032_TX_POWER_11_DBM 4
+#define SI4032_TX_POWER_14_DBM 5
+#define SI4032_TX_POWER_17_DBM 6
+#define SI4032_TX_POWER_20_DBM 7
+
 // Functions
 // Public
 void Si4032_SetFrequency(const float freq_in_mhz);
@@ -80,5 +90,6 @@ int8_t Si4032_GetTemperature(void);
 uint16_t Si4032_GetBatteryVoltage(void);
 void Si4032_Init(void);
 void Si4032_Init2(void);
+void Si4032_PrintRegisters(void);
 
 #endif // SI4032_H

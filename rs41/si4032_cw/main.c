@@ -53,49 +53,72 @@
 #include "si4032.h"
 #include "uart.h"
 #include "itoa.h"
+#include "morse.h"
 
 int main(void) {
-    // Setup registers
+    // Setup all parts
+    // Set correct clock
     clock_setup();
+    // LEDs GPIO
     gpio_setup();
-    usart_setup();
+    // Systick for delay function
     systick_setup();
+    // USART for serial print
+    usart_setup();
+    // SPI config
     spi_setup();
+    delay(50);
+    // Inicialize Si4032
     Si4032_Init();
-    //spi_setup();
+    // For some reason we have to do this again
+    delay(50);
+    Si4032_Init2();
+
     // Set different leds state
     gpio_clear(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
 
-    //Si4032_Init2();
-    Si4032_EnableTx();
-    console_puts("R1250002 start ...\nVersion Si4032: ");
+    console_puts("Vaisala RS41 start ...\nSi4032 version: ");
 
     char buf[64];
     uint8_t version = Si4032_GetVersion();
     itoa(version,buf,10);
     console_puts(buf);
-    console_puts("\n");
+    /*console_puts("\n");
+    console_puts("GA:\n");
+    Si4032_PrintRegisters();
+    Si4032_GetTemperature();
+    delay(100);
+    console_puts("GT:\n");
+    Si4032_PrintRegisters();*/
+
+    // Disable transmitter
+    Si4032_DisableTx();
+
+    uint8_t delay_counter = 0;
+    unsigned int packet_counter = 0;
 
 	while (1) {
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
-        Si4032_EnableTx();
 
-        delay(400);
+        delay(100);
 
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
-        Si4032_DisableTx();
 
-        delay(600);
-        console_puts("Vaisala RS41: ");
-        uint16_t siadc = Si4032_GetBatteryVoltage();
-        itoa(siadc,buf,10);
-        console_puts(buf);
-        console_puts(" mV\n");
+        delay(900);
+        delay_counter++;
+        if(delay_counter > 15) {// cca after 15 seconds
+            itoa(packet_counter,buf,10);
+            Morse_SendMessage("EES,RS41,PACKET,",MORSE_DEFAULT_WPM);
+            Morse_SendMessage(buf,MORSE_DEFAULT_WPM);
+            Morse_SendMessage(",SEE",MORSE_DEFAULT_WPM);
+            delay_counter = 0;
+            packet_counter++;
+        }
 	}
 
 	return 0;
