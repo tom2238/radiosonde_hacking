@@ -68,28 +68,53 @@
 #define SI4032_REG_IO_PORT_CONFIG 0x0E
 #define SI4032_REG_FIFO_ACCESS 0x7F
 
-// TX power
-#define SI4032_TX_POWER_1_DBM 0
-#define SI4032_TX_POWER_2_DBM 1
-#define SI4032_TX_POWER_5_DBM 2
-#define SI4032_TX_POWER_8_DBM 3
-#define SI4032_TX_POWER_11_DBM 4
-#define SI4032_TX_POWER_14_DBM 5
-#define SI4032_TX_POWER_17_DBM 6
-#define SI4032_TX_POWER_20_DBM 7
+// TX power masks
+#define SI4032_TX_POWER_1_DBM  0x00
+#define SI4032_TX_POWER_2_DBM  0x01
+#define SI4032_TX_POWER_5_DBM  0x02
+#define SI4032_TX_POWER_8_DBM  0x03
+#define SI4032_TX_POWER_11_DBM 0x04
+#define SI4032_TX_POWER_14_DBM 0x05
+#define SI4032_TX_POWER_17_DBM 0x06
+#define SI4032_TX_POWER_20_DBM 0x07
+
+// Tx modulation bits
+#define SI4032_TX_MODULATION_SOURCE_DIRECT_GPIO (0x00 << 4)
+#define SI4032_TX_MODULATION_SOURCE_DIRECT_SDI (0x01 << 4)
+#define SI4032_TX_MODULATION_SOURCE_FIFO (0x02 << 4)
+#define SI4032_TX_MODULATION_SOURCE_PN9 (0x03 << 4)
+#define SI4032_TX_MODULATION_TYPE_UNMOD (0x00 << 0)
+#define SI4032_TX_MODULATION_TYPE_OOK (0x01 << 0)
+#define SI4032_TX_MODULATION_TYPE_FSK (0x02 << 0)
+#define SI4032_TX_MODULATION_TYPE_GFSK (0x03 << 0)
+
+// Frequency deviation step Hz
+#define SI4032_FREQUENCY_DEVIATION_STEP 625
+// Frequency offset step Hz
+#define SI4032_FREQUENCY_OFFSET_STEP 156.25
 
 // Functions
 // Public
 void Si4032_SetFrequency(const float freq_in_mhz);
 uint8_t Si4032_GetVersion(void);
 void Si4032_DisableTx(void);
-void Si4032_SoftReset(void);
 void Si4032_EnableTx(void);
 void Si4032_InhibitTx(void);
+void Si4032_SetTxPower(uint8_t power);
+void Si4032_SetTxDataRate(float rate_kbps);
+void Si4032_SetModulatioSource(uint8_t source);
+void Si4032_SetModulatioType(uint8_t type);
+void Si4032_SetFrequencyDeviation(uint32_t frequency_hz);
+void Si4032_SetFrequencyOffset(uint16_t offset_hz);
 int8_t Si4032_GetTemperature(void);
 uint16_t Si4032_GetBatteryVoltage(void);
+// FIFO frame test
+void Si4032_PacketMode(float data_rate, uint32_t deviation, uint8_t packet_len);
+void Si4032_WritePacket(const uint8_t *Data, uint8_t Len);
+// Init
 void Si4032_Init(void);
 void Si4032_Init2(void);
+// Registers debuging
 void Si4032_PrintRegisters(void);
 
 #endif // SI4032_H

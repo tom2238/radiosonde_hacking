@@ -18,7 +18,15 @@ static inline uint8_t Si4032_Register(const uint8_t register_addr, uint8_t value
 static uint8_t Si4032_SpiTransaction(uint16_t data);
 static inline uint8_t Si4032_Write(uint8_t reg, uint8_t value);
 static inline uint8_t Si4032_Read(uint8_t reg);
+static void Si4032_SoftReset(void);
+static uint8_t Si4032_SetRegisterBits(uint8_t reg, uint8_t mask);
+static uint8_t Si4032_ClearRegisterBits(uint8_t reg, uint8_t mask);
+static uint8_t Si4032_AssignRegisterBits(uint8_t reg, uint8_t mask, uint8_t bits);
 static void Si4032_Print(int reg, uint8_t value);
+
+// Interrupt status
+static uint8_t _ItStatus1;
+static uint8_t _ItStatus2;
 
 static inline uint8_t Si4032_Register(const uint8_t register_addr, uint8_t value, uint8_t write) {
     return Si4032_SpiTransaction(((write ? register_addr | SI4032_REGISTER_WRITE : register_addr) << 8) | value);
@@ -62,7 +70,7 @@ void Si4032_DisableTx(void) {
     Si4032_Write(SI4032_REG_OPERATING_FUNCTION_C1, 0x40);
 }
 
-void Si4032_SoftReset(void) {
+static void Si4032_SoftReset(void) {
     Si4032_Write(SI4032_REG_OPERATING_FUNCTION_C1, 0x80);
 }
 
@@ -74,6 +82,95 @@ void Si4032_EnableTx(void) {
 void Si4032_InhibitTx(void) {
     // Sleep mode, but with PLL idle mode enabled, in an attempt to reduce drift on key-up.
     Si4032_Write(SI4032_REG_OPERATING_FUNCTION_C1, 0x43);
+}
+
+void Si4032_SetTxPower(uint8_t power) {
+    Si4032_Write(SI4032_REG_TX_POWER, (power & 0x07));
+}
+
+void Si4032_SetTxDataRate(float rate_kbps) {
+    // Check limits
+    if(rate_kbps > 256.0f) { // Rate is to hight
+        rate_kbps = 256.0f;
+    }
+    if(rate_kbps < 0.123f) { // Rate is to low
+        rate_kbps = 0.123f;
+    }
+    // Because Si4032 in RS41 use 26 MHz clock
+    // recalculate correct value
+    rate_kbps = (rate_kbps*15+6)/13;
+    // If rate is under 30 kbps, set txdtrtscale bit to 1
+    uint16_t rate_reg;
+    // txdr[15:0] = DR_TX(kbps) * 2^(16+5*txdtrtscale) / 1 MHz
+    if(rate_kbps < 30.0f) {
+        rate_reg = rate_kbps*(2<<20)/1000;
+        Si4032_SetRegisterBits(SI4032_REG_MODULATION_MODE_C1,0b00100000);
+    } else {
+        rate_reg = rate_kbps*(2<<15)/1000;
+        Si4032_ClearRegisterBits(SI4032_REG_MODULATION_MODE_C1,0b00100000);
+    }
+    // Set higher bits
+    Si4032_Write(SI4032_REG_TX_DATA_RATE_1,(rate_reg >> 8) & 0xFF);
+    // Set lower bits
+    Si4032_Write(SI4032_REG_TX_DATA_RATE_0,(rate_reg >> 0) & 0xFF);
+}
+
+void Si4032_SetModulatioSource(uint8_t source) {
+    Si4032_AssignRegisterBits(SI4032_REG_MODULATION_MODE_C2, 0b00110000, source);
+}
+
+void Si4032_SetModulatioType(uint8_t type) {
+    Si4032_AssignRegisterBits(SI4032_REG_MODULATION_MODE_C2, 0b00000011, type);
+}
+
+void Si4032_SetFrequencyDeviation(uint32_t frequency_hz) {
+    // Because Si4032 in RS41 use 26 MHz clock
+    // recalculate correct value
+    uint16_t deviation_call = (frequency_hz*15+6)/13/SI4032_FREQUENCY_DEVIATION_STEP;
+    // Set lower bits
+    Si4032_Write(SI4032_REG_FREQUENCY_DEVIATION, (uint8_t)(deviation_call & 0xFF));
+    // Set top MSB bit
+    Si4032_AssignRegisterBits(SI4032_REG_MODULATION_MODE_C2,0b00000100, (uint8_t)(deviation_call >> 6));
+}
+
+void Si4032_SetFrequencyOffset(uint16_t offset_hz) {
+    // Because Si4032 in RS41 use 26 MHz clock
+    // recalculate correct value
+    uint16_t offset = (offset_hz*15+6)/13/SI4032_FREQUENCY_OFFSET_STEP;
+    // Set lower bits
+    Si4032_Write(SI4032_REG_FREQUENCY_OFFSET_1, (uint8_t)(offset & 0xFF));
+    // Set higher bits
+    Si4032_Write(SI4032_REG_FREQUENCY_OFFSET_2, (uint8_t)((offset >> 8) & 0x03));
+}
+
+static uint8_t Si4032_SetRegisterBits(uint8_t reg, uint8_t mask) {
+    // First read current register value
+    uint8_t reg_current = Si4032_Read(reg);
+    // Set bits to 1
+    reg_current |= mask;
+    // Write new register value
+    Si4032_Write(reg,reg_current);
+    return reg_current;
+}
+
+static uint8_t Si4032_ClearRegisterBits(uint8_t reg, uint8_t mask) {
+    // First read current register value
+    uint8_t reg_current = Si4032_Read(reg);
+    // Set bits to 0
+    reg_current &= ~(mask);
+    // Write new register value
+    Si4032_Write(reg,reg_current);
+    return reg_current;
+}
+
+static uint8_t Si4032_AssignRegisterBits(uint8_t reg, uint8_t mask, uint8_t bits) {
+    // First read current register value
+    uint8_t reg_current = Si4032_Read(reg);
+    // Assign bits
+    reg_current = (reg_current & ~(mask)) | (mask & bits);
+    // Write new register value
+    Si4032_Write(reg,reg_current);
+    return reg_current;
 }
 
 int8_t Si4032_GetTemperature(void) {
@@ -94,18 +191,81 @@ uint16_t Si4032_GetBatteryVoltage(void) {
     return (uint16_t)Si4032_Read(SI4032_REG_BATTERY_VOLTAGE_LEVEL)*50+1700;
 }
 
+void Si4032_PacketMode(float data_rate, uint32_t deviation, uint8_t packet_len) {
+    Si4032_SetModulatioType(SI4032_TX_MODULATION_TYPE_GFSK);
+    Si4032_SetModulatioSource(SI4032_TX_MODULATION_SOURCE_FIFO);
+    Si4032_SetFrequencyOffset(0);
+    Si4032_SetFrequencyDeviation(deviation); // In Hz
+    Si4032_SetTxDataRate(data_rate); // in kbps
+    // packet handling enable, CRC-16 CCITT on packtet data only, LSB first
+    Si4032_Write(SI4032_REG_PACKET_DATA_CONROL,0x6C);
+    // 4 header bytes, 4 SYNC bytes, fixed packet length
+    Si4032_Write(SI4032_REG_PACKET_HEADER_CONTROL2,0x4E);
+    // preamble: 85 nibble
+    Si4032_Write(SI4032_REG_PACKET_PREAMBLE_LENGTH,0x55);
+    // packets len, max 255 bytes
+    Si4032_Write(SI4032_REG_PACKET_TRANS_PACKET_LEN,packet_len);
+    // Vaisala RS41 header 8 bytes, use sync + header
+    // little endian encoded, both bytewise and bitwise
+    Si4032_Write(SI4032_REG_PACKET_SYNC_WORD3,0x10);
+    Si4032_Write(SI4032_REG_PACKET_SYNC_WORD2,0xB6);
+    Si4032_Write(SI4032_REG_PACKET_SYNC_WORD1,0xCA);
+    Si4032_Write(SI4032_REG_PACKET_SYNC_WORD0,0x11);
+    Si4032_Write(SI4032_REG_PACKET_TRANS_HEADER3,0x22);
+    Si4032_Write(SI4032_REG_PACKET_TRANS_HEADER2,0x96);
+    Si4032_Write(SI4032_REG_PACKET_TRANS_HEADER1,0x12);
+    Si4032_Write(SI4032_REG_PACKET_TRANS_HEADER0,0xF8);
+    // Clear TX fifo, Auto TX
+    Si4032_Write(SI4032_REG_OPERATING_FUNCTION_C2,0x81);
+    Si4032_Write(SI4032_REG_OPERATING_FUNCTION_C2,0x80);
+}
+
+void Si4032_WritePacket(const uint8_t *Data, uint8_t Len) {
+    // fill the payload into the transmit FIFO
+    for(uint8_t Idx=0; Idx<Len; Idx++){
+        Si4032_Write(SI4032_REG_FIFO_ACCESS,Data[Idx]);
+    }
+    // Disable all other interrupts and enable the packet sent interrupt only.
+    // This will be used for indicating the successful packet transmission for the MCU
+    Si4032_Write(SI4032_REG_INTERRUPT_ENABLE_1,0x04);
+    Si4032_Write(SI4032_REG_INTERRUPT_ENABLE_2,0x00);
+    // Read interrupt status registers. It clear all pending interrupts and the nIRQ pin goes back to high.
+    // nIRQ ?? Not connected on the Vaisala RS41 board?
+    _ItStatus1 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_1);
+    _ItStatus2 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_2);
+    // enable transmitter
+    // The radio forms the packet and send it automatically.
+    Si4032_Write(SI4032_REG_OPERATING_FUNCTION_C1, 0x49);
+    // wait for the packet sent interrupt
+    // The MCU just needs to wait for the 'ipksent' interrupt.
+    // while(NIRQ == 1); ?? Not connected on the Vaisala RS41 board?
+    // read interrupt status registers to release the interrupt flags
+    _ItStatus1 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_1);
+    _ItStatus2 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_2);
+}
+
 void Si4032_Init(void) {
     // Set NSEL pin
     gpio_set(SI4032_NSEL_GPIO,SI4032_NSEL_PIN);
+    // read interrupt status registers to clear the interrupt flags and release NIRQ pin
+    _ItStatus1 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_1);
+    _ItStatus2 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_2);
     // Reset
     Si4032_SoftReset();
+    // wait for chip ready interrupt from the radio (while the nIRQ pin is high)
+    // while ( NIRQ == 1);  ?? Not connected on the Vaisala RS41 board?
+    // read interrupt status registers to clear the interrupt flags and release NIRQ pin
+    _ItStatus1 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_1);
+    _ItStatus2 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_2);
     // Init second part
     Si4032_Init2();
 }
 
 void Si4032_Init2(void) {
+    // Set Frequency 433.125 MHz
+    Si4032_SetFrequency(433.125f);
     // setting TX power 1.2 mW
-    Si4032_Write(SI4032_REG_TX_POWER, (SI4032_TX_POWER_1_DBM & 0x07));
+    Si4032_SetTxPower(SI4032_TX_POWER_1_DBM);
     // Temperature Value Offset
     Si4032_Write(SI4032_REG_TEMPERATURE_VALUE_OFFSET, 0xF0);
     // Temperature Sensor Calibration
@@ -113,17 +273,16 @@ void Si4032_Init2(void) {
     // ADC configuration
     Si4032_Write(SI4032_REG_ADC_CONFIG, 0x80);
     // Zero frequency offset
-    Si4032_Write(SI4032_REG_FREQUENCY_OFFSET_1, 0x00);
-    Si4032_Write(SI4032_REG_FREQUENCY_OFFSET_2, 0x00);
-    // The frequency deviation can be calculated: Fd = 625 Hz x fd[8:0].
+    // The frequency offset can be calculated as
+    // Offset = 156.25 Hz x (hbsel + 1) x fo[7:0]. fo[9:0] is a twos complement value.
+    Si4032_SetFrequencyOffset(0);
     // Zero disables deviation between 0/1 bits
-    Si4032_Write(SI4032_REG_FREQUENCY_DEVIATION, 0);
+    // The frequency deviation can be calculated: Fd = 625 Hz x fd[8:0].
+    Si4032_SetFrequencyDeviation(0);
     // initial unmodulated carrier, CW or RTTY modulation
-    Si4032_Write(SI4032_REG_MODULATION_MODE_C2, 0x00);
-    // Set Frequency 433.125 MHz
-    Si4032_SetFrequency(433.125f);
-    // Enable transmitter
-    Si4032_EnableTx();
+    Si4032_SetModulatioType(SI4032_TX_MODULATION_TYPE_UNMOD);
+    // Disable transmitter
+    Si4032_DisableTx();
 }
 
 void Si4032_PrintRegisters(void) {

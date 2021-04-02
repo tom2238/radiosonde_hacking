@@ -67,34 +67,20 @@ int main(void) {
     usart_setup();
     // SPI config
     spi_setup();
-    delay(50);
+    // Wait at least 15ms before any initialization SPI commands are sent to the radio
+    delay(20);
     // Inicialize Si4032
     Si4032_Init();
     // For some reason we have to do this again
-    delay(50);
+    delay(20);
     Si4032_Init2();
 
     // Set different leds state
     gpio_clear(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
 
-    console_puts("Vaisala RS41 start ...\nSi4032 version: ");
-
+    // Message buffer
     char buf[64];
-    uint8_t version = Si4032_GetVersion();
-    itoa(version,buf,10);
-    console_puts(buf);
-    /*console_puts("\n");
-    console_puts("GA:\n");
-    Si4032_PrintRegisters();
-    Si4032_GetTemperature();
-    delay(100);
-    console_puts("GT:\n");
-    Si4032_PrintRegisters();*/
-
-    // Disable transmitter
-    Si4032_DisableTx();
-
     uint8_t delay_counter = 0;
     unsigned int packet_counter = 0;
 
@@ -110,6 +96,7 @@ int main(void) {
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
         delay(900);
+
         delay_counter++;
         if(delay_counter > 15) {// cca after 15 seconds
             itoa(packet_counter,buf,10);

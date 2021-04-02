@@ -7,3 +7,5 @@ RS41 project with Si4032 ISM TRANSMITTER, CW (morse code) example.
 * Default transmitting frequency is 433.125 MHz
 * Output power is 1 dBm (1.26 mW)
 * Modulation type is Unmodulated carrier (suitable for CW or RTTY)
+
+![Gqrx CW FlDigi](si4032_cw.png?raw=true "Gqrx CW FlDigi")
