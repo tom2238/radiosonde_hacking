@@ -101,7 +101,7 @@ void Si4032_DisableTx(void);
 void Si4032_EnableTx(void);
 void Si4032_InhibitTx(void);
 void Si4032_SetTxPower(uint8_t power);
-void Si4032_SetTxDataRate(float rate_kbps);
+void Si4032_SetTxDataRate(uint32_t rate_bps);
 void Si4032_SetModulatioSource(uint8_t source);
 void Si4032_SetModulatioType(uint8_t type);
 void Si4032_SetFrequencyDeviation(uint32_t frequency_hz);

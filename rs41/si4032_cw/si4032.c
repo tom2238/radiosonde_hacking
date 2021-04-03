@@ -88,25 +88,25 @@ void Si4032_SetTxPower(uint8_t power) {
     Si4032_Write(SI4032_REG_TX_POWER, (power & 0x07));
 }
 
-void Si4032_SetTxDataRate(float rate_kbps) {
+void Si4032_SetTxDataRate(uint32_t rate_bps) {
     // Check limits
-    if(rate_kbps > 256.0f) { // Rate is to hight
-        rate_kbps = 256.0f;
+    if(rate_bps > 256000) { // Rate is to hight
+        rate_bps = 256000;
     }
-    if(rate_kbps < 0.123f) { // Rate is to low
-        rate_kbps = 0.123f;
+    if(rate_bps < 123) { // Rate is to low
+        rate_bps = 123;
     }
     // Because Si4032 in RS41 use 26 MHz clock
     // recalculate correct value
-    rate_kbps = (rate_kbps*15+6)/13;
+    float rate_bps_cal = ((float)(rate_bps)*15)/13;
     // If rate is under 30 kbps, set txdtrtscale bit to 1
     uint16_t rate_reg;
     // txdr[15:0] = DR_TX(kbps) * 2^(16+5*txdtrtscale) / 1 MHz
-    if(rate_kbps < 30.0f) {
-        rate_reg = rate_kbps*(2<<20)/1000;
+    if(rate_bps_cal < 30000) {
+        rate_reg = (rate_bps_cal*(2097152)/1000000); // 2^21
         Si4032_SetRegisterBits(SI4032_REG_MODULATION_MODE_C1,0b00100000);
     } else {
-        rate_reg = rate_kbps*(2<<15)/1000;
+        rate_reg = (rate_bps_cal*(65536)/1000000); // 2^16
         Si4032_ClearRegisterBits(SI4032_REG_MODULATION_MODE_C1,0b00100000);
     }
     // Set higher bits
