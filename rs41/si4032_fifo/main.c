@@ -110,7 +110,7 @@ int main(void) {
 
     console_puts("Start ...\n");
 
-    // 1200 baud, 1200 Hz deviation, 22 bytes packet size
+    // 1200 baud, 4800 Hz deviation, 22 bytes packet size
     Si4032_PacketMode(1200,4800,FRAME_USER_LEN+CRC_SIZE);
 
     // Packet bytes to send

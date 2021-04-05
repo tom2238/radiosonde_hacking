@@ -1,4 +1,4 @@
-# RS41 si4032_cw
+# RS41 si4032_fifo
 
 RS41 project with Si4032 ISM TRANSMITTER, FIFO mode example.
 * First inicialize all components (clock, gpio, spi ...)
@@ -18,7 +18,8 @@ RS41 project with Si4032 ISM TRANSMITTER, FIFO mode example.
 
 ## Decoder setup
 * nrz-audio-modem is used
-* sox -t pulseaudio default -t wav - 2>/dev/null | ./decoder -i - -L 20 -b 1200
+* NRZ coding, 20 byte packet length, 1200 baud rate, STM32 print mode (-P 1)
+* 'sox -t pulseaudio default -t wav - 2>/dev/null | ./decoder -i - -L 20 -b 1200 -P 1'
 
 ### UART vs radio transmission comparasion
 ![UART vs radio](si4032_fifo_radio_uart.png?raw=true "UART vs radio")
