@@ -19,7 +19,7 @@
 
 BINARY = main
 
-OBJS += init.o si4032.o uart.o itoa.o
+OBJS += init.o si4032.o utils.o frame.o
 
 OPENCM3_DIR = ../../libopencm3
 LDSCRIPT = ../../linker/stm32f100x8.ld

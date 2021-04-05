@@ -10,8 +10,7 @@
 #include <stdint.h>
 #include "init.h"
 #include "si4032.h"
-#include "itoa.h"
-#include "uart.h"
+#include "utils.h"
 
 // Private
 static inline uint8_t Si4032_Register(const uint8_t register_addr, uint8_t value, uint8_t write);
@@ -197,12 +196,12 @@ void Si4032_PacketMode(float data_rate, uint32_t deviation, uint8_t packet_len) 
     Si4032_SetFrequencyOffset(0);
     Si4032_SetFrequencyDeviation(deviation); // In Hz
     Si4032_SetTxDataRate(data_rate); // in kbps
-    // packet handling enable, CRC-16 CCITT on packtet data only, LSB first
-    Si4032_Write(SI4032_REG_PACKET_DATA_CONROL,0x6C);
+    // packet handling enable, no CRC-16, LSB first
+    Si4032_Write(SI4032_REG_PACKET_DATA_CONROL,0x48);
     // 4 header bytes, 4 SYNC bytes, fixed packet length
     Si4032_Write(SI4032_REG_PACKET_HEADER_CONTROL2,0x4E);
-    // preamble: 85 nibble
-    Si4032_Write(SI4032_REG_PACKET_PREAMBLE_LENGTH,0x55);
+    // preamble: 40 nibble
+    Si4032_Write(SI4032_REG_PACKET_PREAMBLE_LENGTH,0x28);
     // packets len, max 255 bytes
     Si4032_Write(SI4032_REG_PACKET_TRANS_PACKET_LEN,packet_len);
     // Vaisala RS41 header 8 bytes, use sync + header

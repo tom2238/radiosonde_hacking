@@ -42,7 +42,14 @@
 #define XDATA_USART_RCC_GPIO RCC_GPIOB
 #define XDATA_USART_RCC RCC_USART3
 
+// Vaisala RS41 battery voltage
+#define VBAT_MON_GPIO GPIOA
+#define VBAT_MON_PIN GPIO5
+#define VBAT_MON_RCC RCC_GPIOA
+#define VBAT_MON_ADC_CHANNEL ADC_CHANNEL5
+
 void gpio_setup(void);
+void adc_setup(void);
 void usart_setup(void) ;
 void clock_setup(void);
 void systick_setup(void);
