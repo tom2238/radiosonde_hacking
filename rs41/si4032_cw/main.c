@@ -51,8 +51,7 @@
 #include <stdint.h>
 #include "init.h"
 #include "si4032.h"
-#include "uart.h"
-#include "itoa.h"
+#include "utils.h"
 #include "morse.h"
 
 int main(void) {
