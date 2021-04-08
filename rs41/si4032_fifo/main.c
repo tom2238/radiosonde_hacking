@@ -110,9 +110,8 @@ int main(void) {
 
     console_puts("Start ...\n");
 
-    // 1200 baud, 4800 Hz deviation, 22 bytes packet size
-    Si4032_PacketMode(1200,4800,FRAME_USER_LEN+CRC_SIZE);
-
+    // Short packet (<= 64), 1200 baud, 4800 Hz deviation, 22 bytes packet size, 40 nibbles
+    Si4032_PacketMode(PACKET_TYPE_SHORT,1200,4800,FRAME_USER_LEN+CRC_SIZE,40);
     // Packet bytes to send
     uint8_t packet_data[FRAME_USER_LEN+CRC_SIZE];
 
@@ -179,8 +178,8 @@ int main(void) {
             packet_data[j] = dataframe.value[i];
             j++;
         }
-        // Preambule and header is added in Si4032
-        Si4032_WritePacket(packet_data,FRAME_USER_LEN+CRC_SIZE);
+        // Preamble and header is added in Si4032
+        Si4032_WriteShortPacket(packet_data,FRAME_USER_LEN+CRC_SIZE);
         // Increment frame counter
         framecount++;
 	}

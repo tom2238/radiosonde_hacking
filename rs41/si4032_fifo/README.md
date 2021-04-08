@@ -6,6 +6,7 @@ RS41 project with Si4032 ISM TRANSMITTER, FIFO mode example.
 * Default transmitting frequency is 433.125 MHz
 * Output power is 1 dBm (1.26 mW)
 * GFSK modulation, FIFO mode
+* Transmit short packet (max 64 bytes), 22 bytes packet size
 * Transmit packet cca every second
 * Measure some voltages and MCU temperature
 
