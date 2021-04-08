@@ -184,7 +184,7 @@ int main(void) {
             j++;
         }
 
-        // Preambule and header is added in Si4032
+        // Preamble and header is added in Si4032
         // Clear FIFO content on start
         Si4032_ClearFIFO();
         // Write 64 bytes into FIFO
