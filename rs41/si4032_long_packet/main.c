@@ -114,18 +114,18 @@ int main(void) {
 
     console_puts("Start ...\n");
 
-    // 1200 baud, 4800 Hz deviation, 128 bytes packet size
-    Si4032_PacketMode(4800,2400,FRAME_USER_LEN+CRC_SIZE);
+    // Long packet (64 < length < 256), 4800 baud, 2400 Hz deviation, 128 bytes packet size, 80 nibbles
+    Si4032_PacketMode(PACKET_TYPE_SHORT,4800,2400,FRAME_USER_LEN+CRC_SIZE,80);
 
     // Packet bytes to send
-    uint8_t packet_data[FRAME_USER_LEN+CRC_SIZE] = {0};
+    uint8_t packet_data[FRAME_USER_LEN+CRC_SIZE];
 
 	while (1) {
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
-        delay(2500);
+        delay(500);
 
         // Print frame counter
         console_putc('[');
@@ -183,10 +183,8 @@ int main(void) {
             packet_data[j] = dataframe.value[i];
             j++;
         }
-        // Preambule and header is added in Si4032
-        //Si4032_WritePacket(packet_data,FRAME_USER_LEN+CRC_SIZE);
-        //while(!Si4032_IsPacketSent());
 
+        // Preambule and header is added in Si4032
         // Clear FIFO content on start
         Si4032_ClearFIFO();
         // Write 64 bytes into FIFO
@@ -198,7 +196,7 @@ int main(void) {
         // Enable transmission
         Si4032_PacketTx();
         // Wait for empty FIFO
-        while(!Si4032_IsFIFOEmpty());
+        while(!Si4032_IsFIFOEmpty()); // Sometimes freeze in loop, add some timeout !!
         // Write 32 bytes into FIFO
         Si4032_WritePacketData(packet_data,64,32);
         // Wait for empty FIFO

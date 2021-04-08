@@ -93,6 +93,13 @@
 // Frequency offset step Hz
 #define SI4032_FREQUENCY_OFFSET_STEP 156.25
 
+// Radio packet type: short, long, infinite
+enum SI4032_PACKET_TYPE {
+    PACKET_TYPE_SHORT,
+    PACKET_TYPE_LONG,
+    PACKET_TYPE_INFINITE
+};
+
 // Functions
 // Public
 void Si4032_SetFrequency(const float freq_in_mhz);
@@ -109,9 +116,9 @@ void Si4032_SetFrequencyDeviation(uint32_t frequency_hz);
 void Si4032_SetFrequencyOffset(uint16_t offset_hz);
 int8_t Si4032_GetTemperature(void);
 uint16_t Si4032_GetBatteryVoltage(void);
-// FIFO frame test
-void Si4032_PacketMode(float data_rate, uint32_t deviation, uint8_t packet_len);
-void Si4032_WritePacket(const uint8_t *Data, uint8_t Len);
+// FIFO packet
+void Si4032_PacketMode(enum SI4032_PACKET_TYPE packet_type, uint32_t data_rate, uint32_t deviation, uint8_t packet_len, uint8_t preamble_length);
+void Si4032_WriteShortPacket(const uint8_t *Data, uint8_t Len);
 void Si4032_WritePacketData(const uint8_t *Data, uint16_t start, uint16_t size);
 uint8_t Si4032_IsFIFOEmpty(void);
 uint8_t Si4032_IsPacketSent(void);
