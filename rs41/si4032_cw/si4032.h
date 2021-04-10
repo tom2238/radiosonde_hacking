@@ -1,3 +1,18 @@
+/*
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef SI4032_H
 #define SI4032_H
 
@@ -92,6 +107,15 @@
 #define SI4032_FREQUENCY_DEVIATION_STEP 625
 // Frequency offset step Hz
 #define SI4032_FREQUENCY_OFFSET_STEP 156.25
+
+// FIFO threshold limits in bytes
+#define SI4032_FIFO_EMPTY_THRESHOLD 8
+#define SI4032_FIFO_FULL_THRESHOLD 55
+
+// Delay for eg. Si4032_IsFIFOEmpty function and similar.
+// It reduce number of requests for reading interrupt status from Si4032.
+// It could be half of CPU frequency/10. For 24 MHz CPU clock try 1250000
+#define SI4032_INTERRUPT_CHECK_DELAY_CONSTANT 1250000
 
 // Radio packet type: short, long, infinite
 enum SI4032_PACKET_TYPE {

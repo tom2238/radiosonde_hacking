@@ -1,3 +1,18 @@
+/*
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 // Global LibOpenCM3 libraries
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
@@ -26,6 +41,9 @@ static void Si4032_Print(int reg, uint8_t value);
 // Interrupt status
 static uint8_t _ItStatus1;
 static uint8_t _ItStatus2;
+
+// Rate in bps
+static uint32_t _rate_bps;
 
 /**
  * @brief Si4032_Register Read or write operation with register
@@ -155,6 +173,8 @@ void Si4032_SetTxDataRate(uint32_t rate_bps) {
     if(rate_bps < 123) { // Rate is to low
         rate_bps = 123;
     }
+    // Save rate into private variable
+    _rate_bps = rate_bps;
     // Because Si4032 in RS41 use 26 MHz clock
     // recalculate correct value
     float rate_bps_cal = ((float)(rate_bps)*15)/13;
@@ -340,9 +360,9 @@ void Si4032_PacketMode(enum SI4032_PACKET_TYPE packet_type, uint32_t data_rate, 
         break;
     }
     // FIFO Full Threshold
-    Si4032_Write(SI4032_REG_TX_FIFO_C1,55); // 55 bytes
+    Si4032_Write(SI4032_REG_TX_FIFO_C1,SI4032_FIFO_FULL_THRESHOLD); // 55 bytes
     // FIFO Empty Threshold
-    Si4032_Write(SI4032_REG_TX_FIFO_C2,8); // 8 bytes
+    Si4032_Write(SI4032_REG_TX_FIFO_C2,SI4032_FIFO_EMPTY_THRESHOLD); // 8 bytes
     // Clear TX fifo, Auto TX
     Si4032_ClearFIFO();
 }
@@ -353,18 +373,13 @@ void Si4032_PacketMode(enum SI4032_PACKET_TYPE packet_type, uint32_t data_rate, 
  * @param Len Packet length, must be max 64 bytes long
  */
 void Si4032_WriteShortPacket(const uint8_t *Data, uint8_t Len) {
-    // Preambule and header is added in Si4032
+    // Preamble and header is added in Si4032
     // Clear FIFO content on start
     Si4032_ClearFIFO();
     // fill the payload into the transmit FIFO
     for(uint8_t Idx=0; Idx<Len; Idx++){
         Si4032_Write(SI4032_REG_FIFO_ACCESS,Data[Idx]);
     }
-    // Read and clear interrupt flags
-    Si4032_ClearInterruptStatus();
-    // Disable all other interrupts and enable the packet sent interrupt only.
-    // This will be used for indicating the successful packet transmission for the MCU
-    Si4032_EnablePacketSentInterrupt();
     // enable transmitter
     // The radio forms the packet and send it automatically.
     Si4032_PacketTx();
@@ -384,7 +399,7 @@ void Si4032_WriteShortPacket(const uint8_t *Data, uint8_t Len) {
  */
 void Si4032_WritePacketData(const uint8_t *Data, uint16_t start, uint16_t size) {
     // fill the payload into the transmit FIFO
-    for(uint8_t Idx=start; Idx<start+size; Idx++){
+    for(uint16_t Idx=start; Idx<start+size; Idx++){
         Si4032_Write(SI4032_REG_FIFO_ACCESS,Data[Idx]);
     }
 }
@@ -394,6 +409,8 @@ void Si4032_WritePacketData(const uint8_t *Data, uint16_t start, uint16_t size) 
  * @return If is empty, return 1
  */
 uint8_t Si4032_IsFIFOEmpty(void) {
+    volatile unsigned int i;
+    for(i=0;i<SI4032_INTERRUPT_CHECK_DELAY_CONSTANT/_rate_bps;i++) {}
     // Return 1 if FIFO is empty
     _ItStatus1 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_1);
     return (_ItStatus1 >> 5) & 0x01;
@@ -404,13 +421,15 @@ uint8_t Si4032_IsFIFOEmpty(void) {
  * @return If was sended, return 1
  */
 uint8_t Si4032_IsPacketSent(void) {
+    volatile unsigned int i;
+    for(i=0;i<SI4032_INTERRUPT_CHECK_DELAY_CONSTANT/_rate_bps;i++) {}
     // Return 1 if packet was sended
     _ItStatus1 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_1);
     return (_ItStatus1 >> 2) & 0x01;
 }
 
 /**
- * @brief Si4032_EnablePacketSentInterrupt Disable all other interrupts and enable the packet sent interrupt only
+ * @brief Si4032_EnablePacketSentInterrupt Disable all other interrupts and enable the packet sent interrupt only, for nIRQ pin
  */
 void Si4032_EnablePacketSentInterrupt(void) {
     //Disable all other interrupts and enable the packet sent interrupt only.
@@ -421,7 +440,7 @@ void Si4032_EnablePacketSentInterrupt(void) {
 }
 
 /**
- * @brief Si4032_EnableFIFOEmptyInterrupt Disable all other interrupts and enable the FIFO almost empty interrupt only
+ * @brief Si4032_EnableFIFOEmptyInterrupt Disable all other interrupts and enable the FIFO almost empty interrupt only, for nIRQ pin
  */
 void Si4032_EnableFIFOEmptyInterrupt(void) {
     //Disable all other interrupts and enable the FIFO almost empty interrupt only.
@@ -456,15 +475,16 @@ void Si4032_Init(void) {
     // Set NSEL pin
     gpio_set(SI4032_NSEL_GPIO,SI4032_NSEL_PIN);
     // read interrupt status registers to clear the interrupt flags and release NIRQ pin
-    _ItStatus1 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_1);
-    _ItStatus2 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_2);
+    Si4032_ClearInterruptStatus();
     // Reset
     Si4032_SoftReset();
+    // Set interrupt masks to zero
+    Si4032_Write(SI4032_REG_INTERRUPT_ENABLE_1,0x00);
+    Si4032_Write(SI4032_REG_INTERRUPT_ENABLE_2,0x00);
     // wait for chip ready interrupt from the radio (while the nIRQ pin is high)
     // while ( NIRQ == 1);  ?? Not connected on the Vaisala RS41 board?
     // read interrupt status registers to clear the interrupt flags and release NIRQ pin
-    _ItStatus1 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_1);
-    _ItStatus2 = Si4032_Read(SI4032_REG_INTERRUPT_STATUS_2);
+    Si4032_ClearInterruptStatus();
     // Init second part
     Si4032_Init2();
 }
