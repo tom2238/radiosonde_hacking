@@ -100,6 +100,9 @@ int main(void) {
     unsigned int framecount = 0;
     int i,j;
 
+    // Millis timer delay
+    uint64_t millis_last = millis();
+
     // Set different leds state
     gpio_clear(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
@@ -116,7 +119,11 @@ int main(void) {
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
-        delay(500);
+        // Wait for 1000 ms, including reading+packet transmitting
+        while (millis() < millis_last);
+
+        // Save millis
+        millis_last = millis() + 1000;
 
         // Print frame counter
         console_putc('[');
@@ -161,8 +168,6 @@ int main(void) {
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
-
-        delay(500);
 
         // New packet
         dataframe = NewFrameData(FRAME_USER_LEN + HEAD_SIZE + ECC_SIZE + CRC_SIZE, FRAME_MOD_NRZ);

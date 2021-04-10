@@ -104,6 +104,9 @@ int main(void) {
     unsigned int framecount = 0;
     int i,j;
 
+    // Millis timer delay
+    uint64_t millis_last = millis();
+
     // Set different leds state
     gpio_clear(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
@@ -111,17 +114,18 @@ int main(void) {
     console_puts("Start ...\n");
 
     // Long packet (64 < length < 256), 4800 baud, 2400 Hz deviation, 128 bytes packet size, 80 nibbles
-    Si4032_PacketMode(PACKET_TYPE_SHORT,4800,2400,FRAME_USER_LEN+CRC_SIZE,80);
-
-    // Packet bytes to send
-    uint8_t packet_data[FRAME_USER_LEN+CRC_SIZE];
+    Si4032_PacketMode(PACKET_TYPE_LONG,4800,2400,FRAME_USER_LEN+CRC_SIZE,80);
 
 	while (1) {
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
-        delay(500);
+        // Wait for 1000 ms, including reading+packet transmitting
+        while (millis() < millis_last);
+
+        // Save millis
+        millis_last = millis() + 1000;
 
         // Print frame counter
         console_putc('[');
@@ -167,38 +171,30 @@ int main(void) {
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
-        delay(100);
-
         // New packet
         dataframe = NewFrameData(FRAME_USER_LEN + HEAD_SIZE + ECC_SIZE + CRC_SIZE, FRAME_MOD_NRZ);
         // Calculate new frame data
         FrameCalculate(&dataframe,framecount,adc_vref,adc_val,adc_temperature);     
-        j=0;
-        // Copy frame data + crc into packet, without header
-        for(i=HEAD_SIZE;i<FRAME_USER_LEN+HEAD_SIZE+CRC_SIZE;i++) {
-            packet_data[j] = dataframe.value[i];
-            j++;
-        }
 
         // Preamble and header is added in Si4032
         // Clear FIFO content on start
         Si4032_ClearFIFO();
         // Write 64 bytes into FIFO
-        Si4032_WritePacketData(packet_data,0,64);
+        Si4032_WritePacketData(dataframe.value,8,64);
         // Read and clear interrupt flags
-        Si4032_ClearInterruptStatus();
+        //Si4032_ClearInterruptStatus();
         // Enable FIFO empty interrupt
         Si4032_EnableFIFOEmptyInterrupt();
         // Enable transmission
         Si4032_PacketTx();
         // Wait for empty FIFO
-        while(!Si4032_IsFIFOEmpty()); // Sometimes freeze in loop, add some timeout !!
+        while(!Si4032_IsFIFOEmpty());
         // Write 32 bytes into FIFO
-        Si4032_WritePacketData(packet_data,64,32);
+        Si4032_WritePacketData(dataframe.value,64+8,32);
         // Wait for empty FIFO
         while(!Si4032_IsFIFOEmpty());
         // Write 32 bytes into FIFO
-        Si4032_WritePacketData(packet_data,96,32);
+        Si4032_WritePacketData(dataframe.value,96+8,32);
         // Enable packet send interrupt
         Si4032_EnablePacketSentInterrupt();
         // Wait for send

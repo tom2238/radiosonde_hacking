@@ -23,12 +23,5 @@ RS41 project with Si4032 ISM TRANSMITTER, FIFO mode example with long packet
 * NRZ coding, 126 byte packet length, 4800 baud rate, STM32 print mode (-P 1)
 * 'sox -t pulseaudio default -t wav - 2>/dev/null | ./decoder -i - -L 126 -b 4800 -P 1'
 
-## TODO
-* Fix while loop freezing
-```
-// Wait for empty FIFO
-while(!Si4032_IsFIFOEmpty()); // Sometimes freeze in loop, add some timeout !!
-```
-
 ### Signal spectrum in Gqrx
 ![Gqrx spectra](si4032_fifo_long_frame.png?raw=true "Gqrx spectra")
