@@ -114,8 +114,8 @@
 
 // Delay for eg. Si4032_IsFIFOEmpty function and similar.
 // It reduce number of requests for reading interrupt status from Si4032.
-// It could be half of CPU frequency/10. For 24 MHz CPU clock try 1250000
-#define SI4032_INTERRUPT_CHECK_DELAY_CONSTANT 1250000
+// It could be half of CPU frequency. For 24 MHz CPU clock try 1250000
+#define SI4032_INTERRUPT_CHECK_DELAY_CONSTANT 12500000
 
 // Radio packet type: short, long, infinite
 enum SI4032_PACKET_TYPE {
