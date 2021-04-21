@@ -22,11 +22,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include <sys/types.h>
-// Test
-#include <math.h>
-#include <stdlib.h>
-// end Test
 #include "ax25.h"
 #include "si4032.h"
 #include "utils.h"
@@ -77,15 +72,14 @@ int Ax25_Init(char* from_addr, uint8_t from_ssid, char* to_addr, uint8_t to_ssid
     return 0;
 }
 
-void Ax25_DeInit(void) {
-
-}
-
 int Ax25_SendPacketBlocking(const char *buffer, uint16_t length) {
     // Enable packet config once
     _enable_packetTX = 0;
+    // Reset AFSK1200 carrier phase
     _sine_phase = -AX25_PI;
+    // Set initial tone to MARK
     _Ax25_CurrentTone = AX25_TONE_MARK;
+    // Loading bytes from zero
     _fifo_byte_loader_cnt = 0;
     Ax25_SendHeader();
     for (size_t i = 0; i < length; i++) {
@@ -96,6 +90,7 @@ int Ax25_SendPacketBlocking(const char *buffer, uint16_t length) {
     _enable_packetTX = 0;
     // Wait for send
     while(!Si4032_IsPacketSent());
+    // Disable transmitter
     Si4032_DisableTx();
     return 0;
 }

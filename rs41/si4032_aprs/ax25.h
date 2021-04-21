@@ -67,7 +67,6 @@ typedef struct {
 } Ax25_CustomFrameHeader;
 
 int Ax25_Init(char* from_addr, uint8_t from_ssid, char* to_addr, uint8_t to_ssid, char* relays);
-void Ax25_DeInit(void);
 int Ax25_SendPacketBlocking(const char *buffer, uint16_t length);
 int Ax25_SendDataBlocking(char *buffer);
 
