@@ -62,9 +62,18 @@ static void Ax25_SetFromAddress(char* from_addr, uint8_t from_ssid);
 static void Ax25_SetToAddress(char* to_addr, uint8_t to_ssid);
 static void Ax25_SetRelays(char *relays);
 static void Ax25_ParseRelays(const char* relays, char* dst);
-static int Ax25_Send(char* from_addr, uint8_t from_ssid, char* to_addr, uint8_t to_ssid, char* relays, char* packet_content);
+static int Ax25_SendUI(char* from_addr, uint8_t from_ssid, char* to_addr, uint8_t to_ssid, char* relays, char* packet_content);
 static uint16_t Ax25_Bits2Byte(uint8_t bits[]);
 
+/**
+ * @brief Ax25_Init Init AX25 packet
+ * @param from_addr Source callsign, max 6 chars
+ * @param from_ssid Source APRS SSID
+ * @param to_addr Destination callsign, max 6 chars
+ * @param to_ssid Destination APRS SSID
+ * @param relays Relays, Digipeater addresses
+ * @return Always zero
+ */
 int Ax25_Init(char* from_addr, uint8_t from_ssid, char* to_addr, uint8_t to_ssid, char* relays) {
     Ax25_SetFromAddress(from_addr,from_ssid);
     Ax25_SetToAddress(to_addr,to_ssid);
@@ -72,6 +81,12 @@ int Ax25_Init(char* from_addr, uint8_t from_ssid, char* to_addr, uint8_t to_ssid
     return 0;
 }
 
+/**
+ * @brief Ax25_SendPacketBlocking Send one AX25 frame
+ * @param buffer Content of the packet
+ * @param length Length of packet data
+ * @return Always zero
+ */
 int Ax25_SendPacketBlocking(const char *buffer, uint16_t length) {
     // Enable packet config once
     _enable_packetTX = 0;
@@ -95,11 +110,18 @@ int Ax25_SendPacketBlocking(const char *buffer, uint16_t length) {
     return 0;
 }
 
-int Ax25_SendDataBlocking(char *buffer) {
-    return Ax25_Send((char*)_from_addr,_from_ssid,(char*)_to_addr,_to_ssid,(char*)_relays,buffer);
+/**
+ * @brief Ax25_SendUIFrameBlocking Send one AX25 UI frame
+ * @param buffer AX25 information field
+ * @return int Ax25_Send(...)
+ */
+int Ax25_SendUIFrameBlocking(char *buffer) {
+    return Ax25_SendUI((char*)_from_addr,_from_ssid,(char*)_to_addr,_to_ssid,(char*)_relays,buffer);
 }
 
-
+/**
+ * @brief Ax25_SendHeader
+ */
 static void Ax25_SendHeader(void) {
     _Ax25_packet_CRC = AX25_CRC_INIT_VALUE;
     uint16_t i;
@@ -125,6 +147,10 @@ static void Ax25_SendFooter(void) {
     Ax25_SendByte(AX25_HEADER_FIELD_VALUE);
 }
 
+/**
+ * @brief Ax25_SendByte Send one AX25 byte
+ * @param byte to send
+ */
 static void Ax25_SendByte(uint8_t byte) {
     static uint8_t i, lsb_bit, is_flag, bit_stuffing_counter=0;
     // Check if byte is not a flag, because we give it in a special way
@@ -142,7 +168,6 @@ static void Ax25_SendByte(uint8_t byte) {
         // NRZI code, No Return to Zero Inverted
         if(lsb_bit) { // Sending 1
             bit_stuffing_counter++;
-            //Ax25_WriteToneMark();
             if(bit_stuffing_counter == 5) {
                 // After 5 bits in hight insert low bit
                 Ax25_WriteCurrentTone();
@@ -159,6 +184,10 @@ static void Ax25_SendByte(uint8_t byte) {
     }
 }
 
+/**
+ * @brief Ax25_WriteRawBit Write and send one AX25 bit
+ * @param tone Frequency of tone, mark or space
+ */
 static void Ax25_WriteRawBit(uint16_t tone) {
     // Samples per tone
     unsigned int tone_samples_per_bit = AX25_SAMPLE_RATE/AX25_TONE_MARK;
@@ -195,6 +224,10 @@ static float Ax25_Sin(float x) {
     return -(B * x + C * x * ((x < 0) ? -x : x));
 }
 
+/**
+ * @brief Ax25_AddBitToFIFO Add bit into Si4032 FIFO
+ * @param bit One bit value, 0 or 1
+ */
 static void Ax25_AddBitToFIFO(uint8_t bit) {
     static uint8_t new_bit_buff[8];
     static uint8_t new_bit_cnt = 0;
@@ -235,22 +268,38 @@ static void Ax25_AddBitToFIFO(uint8_t bit) {
     }
 }
 
+/**
+ * @brief Ax25_WriteToneMark Write one mark signal symbol
+ */
 static inline void Ax25_WriteToneMark(void) {
     Ax25_WriteRawBit(AX25_TONE_MARK);
 }
 
+/**
+ * @brief Ax25_WriteToneSpace Write one space signal symbol
+ */
 static inline void Ax25_WriteToneSpace(void) {
     Ax25_WriteRawBit(AX25_TONE_SPACE);
 }
 
+/**
+ * @brief Ax25_ToggleTone Invert tones, mark <=> space
+ */
 static inline void Ax25_ToggleTone(void) {
     _Ax25_CurrentTone = (_Ax25_CurrentTone == AX25_TONE_SPACE) ? AX25_TONE_MARK : AX25_TONE_SPACE;
 }
 
+/**
+ * @brief Ax25_WriteCurrentTone Write one signal symbol, depending on current tone value
+ */
 static inline void Ax25_WriteCurrentTone(void) {
     Ax25_WriteRawBit(_Ax25_CurrentTone);
 }
 
+/**
+ * @brief Ax25_CalcCRC Calculate CRC value for one AX25 bit
+ * @param bit
+ */
 static void Ax25_CalcCRC(uint8_t bit) {
     static unsigned short crc_tmp;
     // XOR LSB bit of CRC with the latest bit
@@ -264,22 +313,41 @@ static void Ax25_CalcCRC(uint8_t bit) {
     }
 }
 
+/**
+ * @brief Ax25_SetFromAddress
+ * @param from_addr Source address, max 6 chars
+ * @param from_ssid Source AX25 SSID
+ */
 static void Ax25_SetFromAddress(char* from_addr, uint8_t from_ssid) {
     memset(_from_addr,' ',sizeof(_from_addr));
     strncpy(_from_addr,from_addr,sizeof(_from_addr));
     _from_ssid = from_ssid;
 }
 
+/**
+ * @brief Ax25_SetToAddress
+ * @param to_addr Destination address, max 6 chars
+ * @param to_ssid Destination AX25 SSID
+ */
 static void Ax25_SetToAddress(char* to_addr, uint8_t to_ssid) {
     memset(_to_addr,' ',sizeof(_to_addr));
     strncpy(_to_addr,to_addr,sizeof(_to_addr));
     _to_ssid = to_ssid;
 }
 
+/**
+ * @brief Ax25_SetRelays Set digipeater addresses
+ * @param relays Addresses
+ */
 static void Ax25_SetRelays(char *relays) {
     Ax25_ParseRelays(relays, (char*)_relays);
 }
 
+/**
+ * @brief Ax25_ParseRelays Set digipeater addresses
+ * @param relays Addresses to set
+ * @param dst Destination where to save
+ */
 static void Ax25_ParseRelays(const char* relays, char* dst) {
     uint8_t relays_len = (uint8_t) strlen(relays);
     uint8_t relays_ptr = 0;
@@ -312,7 +380,17 @@ static void Ax25_ParseRelays(const char* relays, char* dst) {
     dst[dst_ptr] = 0;
 }
 
-static int Ax25_Send(char* from_addr, uint8_t from_ssid, char* to_addr, uint8_t to_ssid, char* relays, char* packet_content) {
+/**
+ * @brief Ax25_SendUI Send one AX25 UI frame
+ * @param from_addr Source address, max 6 chars
+ * @param from_ssid Source AX25 SSID
+ * @param to_addr Destination address, max 6 chars
+ * @param to_ssid Destination AX25 SSID
+ * @param relays Digipeater addresses
+ * @param packet_content AX25 information field
+ * @return int Ax25_SendPacketBlocking(...)
+ */
+static int Ax25_SendUI(char* from_addr, uint8_t from_ssid, char* to_addr, uint8_t to_ssid, char* relays, char* packet_content) {
     Ax25_CustomFrameHeader *bf;
     bf = (Ax25_CustomFrameHeader*)_tmpData;
     memset(bf->from,' ',sizeof(bf->from));
@@ -338,10 +416,15 @@ static int Ax25_Send(char* from_addr, uint8_t from_ssid, char* to_addr, uint8_t 
     return Ax25_SendPacketBlocking((char*)_tmpData, (sizeof(Ax25_CustomFrameHeader)+relay_size+2+strlen(packet_content)));
 }
 
+/**
+ * @brief Ax25_Bits2Byte Conver bits into one byte
+ * @param bits Bits array contain 0 or 1
+ * @return Byte in little endian order
+ */
 static uint16_t Ax25_Bits2Byte(uint8_t bits[]) {
     int i, byteval=0, d=1;
-    for (i = 0; i < 8; i++) {     // little endian
-        /* for (i = 7; i >= 0; i--) { // big endian */
+    // little endian
+    for (i = 0; i < 8; i++) {
         if (bits[i] == 1)  {
             byteval += d;
         }

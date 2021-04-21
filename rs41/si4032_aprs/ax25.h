@@ -68,6 +68,6 @@ typedef struct {
 
 int Ax25_Init(char* from_addr, uint8_t from_ssid, char* to_addr, uint8_t to_ssid, char* relays);
 int Ax25_SendPacketBlocking(const char *buffer, uint16_t length);
-int Ax25_SendDataBlocking(char *buffer);
+int Ax25_SendUIFrameBlocking(char *buffer);
 
 #endif // AX25_RS41_H

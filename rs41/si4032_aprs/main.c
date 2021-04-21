@@ -55,7 +55,7 @@
 #include "utils.h"
 #include "ax25.h"
 
-#define APRS_CALLSIGN "OK2IGL"
+#define APRS_CALLSIGN "N0CALL"
 #define APRS_SSID 'B'
 #define TXT_BUFFER "!4904.91N/01649.04E_000/000g000t049b10120h85; 09,7C;HW:PIC3COM,QTH:Otnice"
 
@@ -67,7 +67,6 @@ static uint16_t read_adc(uint8_t channel);
 static int read_adc_temperature(void);
 static uint16_t read_adc_supply(void);
 static uint16_t read_adc_voltage(uint8_t channel);
-
 
 int main(void) {
     // Setup all parts
@@ -134,7 +133,7 @@ int main(void) {
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
-        Ax25_SendDataBlocking(TXT_BUFFER);
+        Ax25_SendUIFrameBlocking(TXT_BUFFER);
 
         // Calculate new frame values
 
