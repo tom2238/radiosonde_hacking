@@ -34,14 +34,22 @@
 #define AX25_CRC_INIT_VALUE 0xFFFF
 // AX25 CRC polynomial
 #define AX25_CRC_POLYNOMIAL 0x8408
+// CRC size in bytes
+#define AX25_CRC_SIZE 2
 // Tone, rates
 #define AX25_TONE_MARK 1200
 #define AX25_TONE_SPACE 2400
 #define AX25_SAMPLE_RATE 13200
+// PI constants
 #define AX25_WF_TPI 6.2831853f // 2xPI
 #define AX25_PI 3.141592654f
 #define AX25_TPI AX25_WF_TPI
-
+// AX25 footer flag size
+#define AX25_FOOTER_FLAG_SIZE 2
+// Si4032 FIFO buffer size
+#define AX25_FIFO_BUFFER_SIZE 16
+// Maximum APRS frame buffer
+#define AX25_TX_BUFFER_SIZE 256
 
 /**
  * @brief Structure defining the basic AX25 frame

@@ -57,7 +57,8 @@
 
 #define APRS_CALLSIGN "N0CALL"
 #define APRS_SSID 'B'
-#define TXT_BUFFER "!4904.91N/01649.04E_000/000g000t049b10120h85; 09,7C;HW:PIC3COM,QTH:Otnice"
+#define APRS_TXT_BUFFER_1 "!439.000JM*111111z4852.06N/01638.91Er439.000MHz T088 -760 OK0BH"
+#define APRS_TXT_BUFFER_2 "!4852.16N101639.01E#PHG1731/APRS FILL-IN DIGI DEVIN"
 
 // MCU supply voltage
 static uint16_t adc_supply = 0;
@@ -133,10 +134,7 @@ int main(void) {
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
-        Ax25_SendUIFrameBlocking(TXT_BUFFER);
-
         // Calculate new frame values
-
         // Read ADC supply voltage
         adc_supply = read_adc_supply()/4;
         adc_supply += read_adc_supply()/4;
@@ -159,6 +157,10 @@ int main(void) {
 
         // Reading MCU temperature
         adc_temperature = read_adc_temperature();
+
+        // Send APRS frame
+        Ax25_SendUIFrameBlocking(APRS_TXT_BUFFER_2);
+
         // Increment frame counter
         framecount++; 
         // Clear watchdog timer

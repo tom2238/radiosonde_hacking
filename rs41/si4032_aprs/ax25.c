@@ -34,7 +34,7 @@ static float _sine_phase = 0;
 // NRZI tone
 static uint16_t _Ax25_CurrentTone = AX25_TONE_MARK;
 // APRS frame data
-static uint8_t _tmpData[255];
+static uint8_t _tmpData[AX25_TX_BUFFER_SIZE];
 // Src, Dst address, AX25
 static char _from_addr[6];
 static uint8_t _from_ssid;
@@ -42,9 +42,11 @@ static char _to_addr[6];
 static uint8_t _to_ssid;
 static char* _relays[3*7];
 // Only at begin of frame
-static uint8_t _enable_packetTX = 0;
+static uint8_t _enable_packetTX;
 // Bytes counter for FIFO loader
 static uint8_t _fifo_byte_loader_cnt;
+// Packet length in bytes
+static uint16_t _Ax25_packet_size;
 
 // Private functions
 static void Ax25_SendHeader(void);
@@ -96,13 +98,13 @@ int Ax25_SendPacketBlocking(const char *buffer, uint16_t length) {
     _Ax25_CurrentTone = AX25_TONE_MARK;
     // Loading bytes from zero
     _fifo_byte_loader_cnt = 0;
+    // Save packet length
+    _Ax25_packet_size = length + AX25_VHF_HEADER_SIZE + AX25_CRC_SIZE + AX25_FOOTER_FLAG_SIZE;
     Ax25_SendHeader();
     for (size_t i = 0; i < length; i++) {
         Ax25_SendByte((uint8_t)(buffer[i]));
     }
     Ax25_SendFooter();
-    // Enable packet config once
-    _enable_packetTX = 0;
     // Wait for send
     while(!Si4032_IsPacketSent());
     // Disable transmitter
@@ -142,9 +144,9 @@ static void Ax25_SendFooter(void) {
     tmp_byte = (uint8_t)((_Ax25_packet_CRC >> 8) ^ 0xFF);
     Ax25_SendByte((uint8_t)((_Ax25_packet_CRC)^0xFF));
     Ax25_SendByte(tmp_byte);
-    Ax25_SendByte(AX25_HEADER_FIELD_VALUE);
-    Ax25_SendByte(AX25_HEADER_FIELD_VALUE);
-    Ax25_SendByte(AX25_HEADER_FIELD_VALUE);
+    for(int i=0;i<AX25_FOOTER_FLAG_SIZE;i++) {
+        Ax25_SendByte(AX25_HEADER_FIELD_VALUE);
+    }
 }
 
 /**
@@ -158,6 +160,10 @@ static void Ax25_SendByte(uint8_t byte) {
     for(i=0;i<8;i++) {
         // Save LSB bit
         lsb_bit = (uint8_t)(byte & 0x01);
+        // Decrement packet byte length at last bit in byte
+        if(i == 7) {
+            _Ax25_packet_size--;
+        }
 
         if(is_flag) {
             bit_stuffing_counter = 0;
@@ -182,6 +188,7 @@ static void Ax25_SendByte(uint8_t byte) {
         // Shift byte right
         byte >>= 1;
     }
+
 }
 
 /**
@@ -194,7 +201,7 @@ static void Ax25_WriteRawBit(uint16_t tone) {
     // Delta phase of sine carrier, depending on tone frequency
     float deltaph = AX25_WF_TPI*tone/AX25_SAMPLE_RATE;
     int16_t sig;
-
+    // Write samples
     while(tone_samples_per_bit--) {
         // Calculate AFSK1200 carrier value
         sig = 256 * Ax25_Sin(_sine_phase);
@@ -208,6 +215,14 @@ static void Ax25_WriteRawBit(uint16_t tone) {
         // If is phase out of range, change phase to begin
         if(_sine_phase > AX25_PI) {
             _sine_phase =  - (AX25_PI);
+        }
+    }
+    // In last packet byte
+    if(_Ax25_packet_size == 0) {
+        // Number of missing bit in FIFO
+        uint16_t null_bits = (8 * AX25_FIFO_BUFFER_SIZE) - (8 * _fifo_byte_loader_cnt);
+        while(null_bits--) {
+            Ax25_AddBitToFIFO(1);
         }
     }
 }
@@ -232,7 +247,7 @@ static void Ax25_AddBitToFIFO(uint8_t bit) {
     static uint8_t new_bit_buff[8];
     static uint8_t new_bit_cnt = 0;
     static uint8_t new_byte;
-    static uint8_t new_byte_buff[32];
+    static uint8_t new_byte_buff[AX25_FIFO_BUFFER_SIZE];
     // Add bits into byte array
     new_bit_buff[new_bit_cnt] = bit;
     new_bit_cnt++;
@@ -241,17 +256,17 @@ static void Ax25_AddBitToFIFO(uint8_t bit) {
         new_bit_cnt = 0;
         // Convert into byte
         new_byte = Ax25_Bits2Byte(new_bit_buff);
-        // Add into 32 byte array
+        // Add into 16, (32) byte array
         new_byte_buff[_fifo_byte_loader_cnt] = new_byte;
         _fifo_byte_loader_cnt++;
-        if(_fifo_byte_loader_cnt == 32) {
+        if(_fifo_byte_loader_cnt == AX25_FIFO_BUFFER_SIZE) {
             if(_enable_packetTX == 0) {
                 // Disable beginning config
                 _enable_packetTX = 1;
                 // Clear TX FIFO on start
                 Si4032_ClearFIFO();
-                // Write 32 bytes into FIFO
-                Si4032_WritePacketData(new_byte_buff,0,32);
+                // Write 16, (32) bytes into FIFO
+                Si4032_WritePacketData(new_byte_buff,0,AX25_FIFO_BUFFER_SIZE);
                 // Enable packet transmission
                 Si4032_PacketTx();
                 // Clear byte counter
@@ -259,8 +274,8 @@ static void Ax25_AddBitToFIFO(uint8_t bit) {
             } else {
                 // Wait for empty FIFO
                 while(!Si4032_IsFIFOEmpty());
-                // Write 32 bytes into FIFO
-                Si4032_WritePacketData(new_byte_buff,0,32);
+                // Write 16, (32) bytes into FIFO
+                Si4032_WritePacketData(new_byte_buff,0,AX25_FIFO_BUFFER_SIZE);
                 // Clear byte counter
                 _fifo_byte_loader_cnt = 0;
             }

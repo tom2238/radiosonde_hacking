@@ -16,15 +16,20 @@ RS41 project with Si4032 ISM TRANSMITTER, APRS transmitter with FIFO mode
 * 2) Round up this sine signal to square.
 * 3) Now we have binary baseband signal stream.
 * 4) Convert bits into bytes.
-* 5) Fill bytes into 32 bytes buffer.
+* 5) Fill bytes into 16 bytes buffer.
 * 6) If buffer is full, then write buffer into Si4032 FIFO and wait for Si4032 FIFO empty interrupt.
-* 7) All packet data is transmitted in 32 bytes RAW blocks.
+* 7) All packet data is transmitted in 16 bytes RAW blocks.
 * No timer configuration is not needed.
 * No SPI init and deinit is not needed.
 * All timing is done in Si4032 radio.
 
 ## Decoder setup
 * Some AX.25, APRS decoder
+
+## Audio files
+* [APRS from digipeater](APRS_packet_repeater.wav)
+* [APRS from RS41 timer](APRS_packet_rs41_timer.wav)
+* [APRS from RS41 FIFO](APRS_packet_rs41_fifo.wav)
 
 ## Signal spectrum comparasion
 ### My own APRS implementation with FIFO usage
