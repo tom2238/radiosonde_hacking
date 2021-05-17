@@ -1,0 +1,112 @@
+=== ORIGINAL SENSOR ===
+time      : 2021-04-27 22:48:57
+model     : inFactory sensor                       ID        : 160
+Temperature: 47.60 °F   Humidity  : 39 %
+pulse_demod_ppm(): inFactory 
+bitbuffer:: Number of rows: 2 
+[00] { 4} 00             : 0000
+[01] {40} a0 d2 56 03 93 : 10100000 11010010 01010110 00000011 10010011 
+Pulse data: 46 pulses
+[  0] Pulse:  258, Gap:  244, Period:  502
+[  1] Pulse:  251, Gap:  244, Period:  495
+[  2] Pulse:  253, Gap:  242, Period:  495
+[  3] Pulse:  253, Gap:  244, Period:  497
+[  4] Pulse:  145, Gap: 2005, Period: 2150
+[  5] Pulse:  138, Gap: 1023, Period: 1161
+[  6] Pulse:  144, Gap:  466, Period:  610
+[  7] Pulse:  137, Gap: 1023, Period: 1160
+[  8] Pulse:  145, Gap:  488, Period:  633
+[  9] Pulse:  137, Gap:  452, Period:  589
+[ 10] Pulse:  135, Gap:  475, Period:  610
+[ 11] Pulse:  136, Gap:  475, Period:  611
+[ 12] Pulse:  135, Gap:  496, Period:  631
+[ 13] Pulse:  137, Gap: 1002, Period: 1139
+[ 14] Pulse:  143, Gap: 1016, Period: 1159
+[ 15] Pulse:  143, Gap:  468, Period:  611
+[ 16] Pulse:  135, Gap: 1046, Period: 1181
+[ 17] Pulse:  137, Gap:  451, Period:  588
+[ 18] Pulse:  136, Gap:  475, Period:  611
+[ 19] Pulse:  136, Gap: 1023, Period: 1159
+[ 20] Pulse:  144, Gap:  489, Period:  633
+[ 21] Pulse:  136, Gap:  453, Period:  589
+[ 22] Pulse:  135, Gap: 1024, Period: 1159
+[ 23] Pulse:  144, Gap:  467, Period:  611
+[ 24] Pulse:  135, Gap: 1046, Period: 1181
+[ 25] Pulse:  137, Gap:  452, Period:  589
+[ 26] Pulse:  136, Gap: 1023, Period: 1159
+[ 27] Pulse:  144, Gap: 1016, Period: 1160
+[ 28] Pulse:  144, Gap:  489, Period:  633
+[ 29] Pulse:  136, Gap:  451, Period:  587
+[ 30] Pulse:  137, Gap:  474, Period:  611
+[ 31] Pulse:  136, Gap:  475, Period:  611
+[ 32] Pulse:  136, Gap:  496, Period:  632
+[ 33] Pulse:  136, Gap:  452, Period:  588
+[ 34] Pulse:  136, Gap:  474, Period:  610
+[ 35] Pulse:  137, Gap: 1024, Period: 1161
+[ 36] Pulse:  143, Gap: 1038, Period: 1181
+[ 37] Pulse:  137, Gap: 1002, Period: 1139
+[ 38] Pulse:  143, Gap:  466, Period:  609
+[ 39] Pulse:  136, Gap:  475, Period:  611
+[ 40] Pulse:  136, Gap: 1073, Period: 1209
+[ 41] Pulse:  139, Gap:  483, Period:  622
+[ 42] Pulse:  136, Gap:  475, Period:  611
+[ 43] Pulse:  135, Gap: 1025, Period: 1160
+[ 44] Pulse:  143, Gap: 1021, Period: 1164
+[ 45] Pulse:  146, Gap: 2581, Period: 2727
+
+=== EMULATION ===
+time      : 2021-04-27 22:48:58
+model     : inFactory sensor                       ID        : 155
+Temperature: 32.00 °F   Humidity  : 30 %
+pulse_demod_ppm(): inFactory 
+bitbuffer:: Number of rows: 2 
+[00] { 4} 00             : 0000
+[01] {40} 9b 10 4c 43 02 : 10011011 00010000 01001100 01000011 00000010 
+Pulse data: 46 pulses
+[  0] Pulse:  262, Gap:  248, Period:  510
+[  1] Pulse:  260, Gap:  248, Period:  508
+[  2] Pulse:  260, Gap:  249, Period:  509
+[  3] Pulse:  259, Gap:  249, Period:  508
+[  4] Pulse:  142, Gap: 2048, Period: 2190
+[  5] Pulse:  143, Gap: 1048, Period: 1191
+[  6] Pulse:  142, Gap:  481, Period:  623
+[  7] Pulse:  143, Gap:  480, Period:  623
+[  8] Pulse:  143, Gap: 1048, Period: 1191
+[  9] Pulse:  143, Gap: 1047, Period: 1190
+[ 10] Pulse:  143, Gap:  481, Period:  624
+[ 11] Pulse:  143, Gap: 1047, Period: 1190
+[ 12] Pulse:  144, Gap: 1047, Period: 1191
+[ 13] Pulse:  143, Gap:  480, Period:  623
+[ 14] Pulse:  144, Gap:  479, Period:  623
+[ 15] Pulse:  143, Gap:  481, Period:  624
+[ 16] Pulse:  142, Gap: 1048, Period: 1190
+[ 17] Pulse:  143, Gap:  481, Period:  624
+[ 18] Pulse:  142, Gap:  481, Period:  623
+[ 19] Pulse:  142, Gap:  481, Period:  623
+[ 20] Pulse:  143, Gap:  480, Period:  623
+[ 21] Pulse:  143, Gap:  480, Period:  623
+[ 22] Pulse:  143, Gap: 1048, Period: 1191
+[ 23] Pulse:  143, Gap:  480, Period:  623
+[ 24] Pulse:  143, Gap:  480, Period:  623
+[ 25] Pulse:  143, Gap: 1048, Period: 1191
+[ 26] Pulse:  143, Gap: 1048, Period: 1191
+[ 27] Pulse:  142, Gap:  481, Period:  623
+[ 28] Pulse:  143, Gap:  480, Period:  623
+[ 29] Pulse:  143, Gap:  480, Period:  623
+[ 30] Pulse:  143, Gap: 1048, Period: 1191
+[ 31] Pulse:  143, Gap:  480, Period:  623
+[ 32] Pulse:  143, Gap:  480, Period:  623
+[ 33] Pulse:  143, Gap:  480, Period:  623
+[ 34] Pulse:  144, Gap:  480, Period:  624
+[ 35] Pulse:  142, Gap: 1049, Period: 1191
+[ 36] Pulse:  142, Gap: 1048, Period: 1190
+[ 37] Pulse:  143, Gap:  480, Period:  623
+[ 38] Pulse:  143, Gap:  480, Period:  623
+[ 39] Pulse:  143, Gap:  480, Period:  623
+[ 40] Pulse:  143, Gap:  481, Period:  624
+[ 41] Pulse:  142, Gap:  481, Period:  623
+[ 42] Pulse:  143, Gap:  480, Period:  623
+[ 43] Pulse:  143, Gap: 1048, Period: 1191
+[ 44] Pulse:  142, Gap:  481, Period:  623
+[ 45] Pulse:  143, Gap: 2621, Period: 2764
+
