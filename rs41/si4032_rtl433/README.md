@@ -23,6 +23,6 @@ Temperature: 32.00 °F   Humidity  : 30 %
 ```
 
 ## Issues
-* My home weather station cannot decode this packets. Maybe CRC calculation techniq is bad or baud rate speed is not perfect.
+* My home weather station cannot decode this packets. Maybe CRC calculation technique is bad or baud rate is not perfect.
 * rtl_433 maybe ignore CRC, I am not sure.
 * Another station have only temperature sensor and use hideki protocol. https://github.com/merbanan/rtl_433/blob/master/src/devices/hideki.c. I cannot find any suitable hideki protocol description now.
