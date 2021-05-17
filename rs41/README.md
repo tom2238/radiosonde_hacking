@@ -14,6 +14,7 @@
 * si4032_infinite_packet - ISM band transmitter using Si4032 onboard chip, use FIFO mode and GFSK modulation, packet length over 255 bytes, tx packet handler is off
 * si4032_infinite_manchester - ISM band transmitter using Si4032 onboard chip, use FIFO mode and GFSK modulation, continuous packet transmission with Manchester coding, , tx packet handler is off
 * si4032_aprs - APRS tracker, use FIFO mode and GFSK modulation
+* si4032_rtl433 - Sending temperature and humidity to weather station
 
 ## Si4032 datasheet
 * Si4030/31/32 ISM TRANSMITTER - https://www.silabs.com/documents/public/data-sheets/Si4030-31-32.pdf
