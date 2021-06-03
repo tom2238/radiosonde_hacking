@@ -9,7 +9,6 @@ RS41 project with Si4032 ISM TRANSMITTER, FIFO mode example with long packet
 * Transmit long packet (over 64 bytes), 128 bytes packet size
 * Transmit packet cca every second
 * Measure some voltages and MCU temperature
-* Added watchdog timer (because freezing in loop :-( )
 
 ## Packet setup
 * 4800 baud rate
