@@ -12,10 +12,15 @@
 ## Building libopencm3
 ---------
 * Init and download/update submodule
+
     $ git submodule init
+
     $ git submodule update
+
 * Build it (requiest python3)
+
     $ cd libopencm3
+
     $ make
 
 ## Building projects
