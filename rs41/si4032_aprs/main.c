@@ -19,7 +19,11 @@
  * Working directory: %{CurrentProject:BuildPath}
  */
 
-/* Add ../../libopencm3/include into <project name>.include file to show libs and function help */
+/* Add
+ * ../../libopencm3/include
+ * ../libraries
+ * into <project name>.include file to show libs and function help
+ */
 
 /* Vaisala RS41 Upload
  * 1. Press power button to power up MCU
@@ -102,7 +106,7 @@ int main(void) {
 
     // Frame infos
     unsigned int framecount = 0;
-    int i,j;
+    //int i,j;
 
     // Millis timer delay
     uint64_t millis_last = millis();

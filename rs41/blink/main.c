@@ -19,6 +19,12 @@
  * Working directory: %{CurrentProject:BuildPath}
  */
 
+/* Add
+ * ../../libopencm3/include
+ * ../libraries
+ * into <project name>.include file to show libs and function help
+ */
+
 /* Vaisala RS41 Upload
  * 1. Press power button to power up MCU
  * 2. Erase with: st-flash erase

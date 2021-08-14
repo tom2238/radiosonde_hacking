@@ -1,9 +1,9 @@
+../libraries/si4032.c
+../libraries/si4032.h
+../libraries/utils.c
+../libraries/utils.h
 ax25.c
 ax25.h
 init.c
 init.h
 main.c
-si4032.c
-si4032.h
-utils.c
-utils.h

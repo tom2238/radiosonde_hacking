@@ -17,13 +17,20 @@
 ## along with this library.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
+# Output program name
 BINARY = main
-
-OBJS += init.o si4032.o utils.o ax25.o
-
+# Include library path
+LIBRARY_DIR = ../libraries
+DEFS += -I$(LIBRARY_DIR)
+# Add library objects
+OBJS += $(LIBRARY_DIR)/utils.o
+OBJS += $(LIBRARY_DIR)/si4032.o
+# Add project custom objects
+OBJS += init.o  ax25.o
+# libOpenCM dir
 OPENCM3_DIR = ../../libopencm3
 LDSCRIPT = ../../linker/stm32f100x8.ld
 LDLIBS += -lm
-
+# Include common rules
 include ../../common.f1.mk
 

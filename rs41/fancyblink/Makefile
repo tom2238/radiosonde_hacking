@@ -17,12 +17,17 @@
 ## along with this library.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
+# Output program name
 BINARY = main
-
+# Include library path
+LIBRARY_DIR = ../libraries
+DEFS += -I$(LIBRARY_DIR)
+# Add library objects
+# Add project custom objects
 OBJS += init.o
-
+# libOpenCM dir
 OPENCM3_DIR = ../../libopencm3
 LDSCRIPT = ../../linker/stm32f100x8.ld
-
+# Include common rules
 include ../../common.f1.mk
 
