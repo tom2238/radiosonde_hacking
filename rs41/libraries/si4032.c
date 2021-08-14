@@ -23,7 +23,7 @@
 #include <libopencm3/stm32/f1/spi.h>
 // Another libraries
 #include <stdint.h>
-#include "init.h"
+//#include "init.h"
 #include "si4032.h"
 #include "utils.h"
 

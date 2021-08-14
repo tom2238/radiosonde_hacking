@@ -103,8 +103,8 @@ int main(void) {
     console_puts("Start ...\n");
 
     // TX FIFO Mode with Packet Handler Disabled
-    // Infinite packet (over 255 bytes),Tone baud, 7500 Hz deviation, packet size dont care, 80 nibbles dont care
-    Si4032_PacketMode(PACKET_TYPE_INFINITE,RS_MARKER_TONE_1_F*2,7500,0xFF,80);
+    // Infinite packet (over 255 bytes),Tone baud, 5500 Hz deviation, packet size dont care, 80 nibbles dont care
+    Si4032_PacketMode(PACKET_TYPE_INFINITE,RS_MARKER_TONE_1_F*2,5500,0xFF,80);
     Si4032_SetFrequency(433.120f);
     // Clear FIFO content on start
     Si4032_ClearFIFO();
@@ -117,7 +117,7 @@ int main(void) {
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
-        Si4032_SetTxPower(SI4032_TX_POWER_1_DBM);
+        Si4032_SetTxPower(SI4032_TX_POWER_11_DBM);
 
         // Send 169 bytes with speed 1300*2=2600 bds
         for(i=0;i<5;i++) { // 5 * 32 = 160
@@ -133,7 +133,7 @@ int main(void) {
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);        
-        Si4032_SetTxPower(SI4032_TX_POWER_5_DBM);
+        Si4032_SetTxPower(SI4032_TX_POWER_17_DBM);
 
         // Send 253 bytes with speed 1940*2=3880 bds
         for(i=0;i<7;i++) { // 7 * 32 = 224
@@ -150,7 +150,7 @@ int main(void) {
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
-        Si4032_SetTxPower(SI4032_TX_POWER_11_DBM);
+        Si4032_SetTxPower(SI4032_TX_POWER_20_DBM);
 
         // Send 662 bytes with speed 2590*2=5180 bds
         for(i=0;i<20;i++) { // 20 * 32 = 640

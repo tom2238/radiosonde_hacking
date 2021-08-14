@@ -1,9 +1,7 @@
-frame.c
-frame.h
+../libraries/si4032.c
+../libraries/si4032.h
+../libraries/utils.c
+../libraries/utils.h
 init.c
 init.h
 main.c
-si4032.c
-si4032.h
-utils.c
-utils.h
