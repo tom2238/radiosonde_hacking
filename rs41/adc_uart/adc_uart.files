@@ -1,3 +1,5 @@
+../libraries/utils.c
+../libraries/utils.h
 init.c
 init.h
 main.c

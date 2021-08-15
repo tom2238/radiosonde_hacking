@@ -19,7 +19,11 @@
  * Working directory: %{CurrentProject:BuildPath}
  */
 
-/* Add ../../libopencm3/include into <project name>.include file to show libs and function help */
+/* Add
+ * ../../libopencm3/include
+ * ../libraries
+ * into <project name>.include file to show libs and function help
+ */
 
 /* Vaisala RS41 Upload
  * 1. Press power button to power up MCU
@@ -54,6 +58,10 @@
 #include "si4032.h"
 #include "utils.h"
 #include "frame.h"
+
+// project frame.h
+//#define FRAME_LEN_MAX 140  // max framelen 150 , user data 140
+//#define FRAME_USER_LEN 126  // ?27 for MAN, 54 for NRZ
 
 // FSK frame
 static FrameData dataframe;
@@ -102,7 +110,7 @@ int main(void) {
 
     // Frame infos
     unsigned int framecount = 0;
-    int i,j;
+    //int i,j;
 
     // Millis timer delay
     uint64_t millis_last = millis();

@@ -35,6 +35,7 @@
 // Another libraries
 #include <stdint.h>
 #include "init.h"
+#include "si4032.h"
 
 // Storage for our monotonic system clock.
 // Note that it needs to be volatile since we're modifying it from an interrupt.

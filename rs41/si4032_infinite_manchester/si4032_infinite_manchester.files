@@ -3,7 +3,3 @@ frame.h
 init.c
 init.h
 main.c
-si4032.c
-si4032.h
-utils.c
-utils.h
