@@ -59,10 +59,6 @@
 #include "utils.h"
 #include "frame.h"
 
-// project frame.h
-//#define FRAME_LEN_MAX 140  // max framelen 150 , user data 140
-//#define FRAME_USER_LEN 126  // ?27 for MAN, 54 for NRZ
-
 // FSK frame
 static FrameData dataframe;
 
@@ -112,6 +108,9 @@ int main(void) {
     unsigned int framecount = 0;
     //int i,j;
 
+    // Frame init
+    Frame_Init(140,126,FRAME_MOD_NRZ);
+
     // Millis timer delay
     uint64_t millis_last = millis();
 
@@ -122,7 +121,7 @@ int main(void) {
     console_puts("Start ...\n");
 
     // Long packet (64 < length < 256), 4800 baud, 2400 Hz deviation, 128 bytes packet size, 80 nibbles
-    Si4032_PacketMode(PACKET_TYPE_LONG,4800,2400,FRAME_USER_LEN+CRC_SIZE,80);
+    Si4032_PacketMode(PACKET_TYPE_LONG,4800,2400,Frame_GetUserLength()+Frame_GetCRCSize(),80);
 
 	while (1) {
         /* Blink the LED on the board. */
@@ -180,7 +179,7 @@ int main(void) {
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
         // New packet
-        dataframe = NewFrameData(FRAME_USER_LEN + HEAD_SIZE + ECC_SIZE + CRC_SIZE, FRAME_MOD_NRZ);
+        dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
         // Calculate new frame data
         FrameCalculate(&dataframe,framecount,adc_vref,adc_val,adc_temperature);     
 
@@ -236,8 +235,8 @@ static void FrameCalculate(FrameData *frame, unsigned int count, uint16_t adc_vr
     frame->value[18] = (adc_supply >> 8) & 0xFF;
     frame->value[19] = (adc_supply >> 0) & 0xFF;
     // Calculate CRC16
-    CalculateCRC16(frame);
-    FrameXOR(frame,0); // XORing NRZ frame
+    Frame_CalculateCRC16(frame);
+    Frame_XOR(frame,0); // XORing NRZ frame
 }
 
 // ADC reading function

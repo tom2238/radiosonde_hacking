@@ -57,10 +57,6 @@
 #include "utils.h"
 #include "frame.h"
 
-// project frame.h
-//#define FRAME_LEN_MAX 64  // max framelen 64 , user data 54
-//#define FRAME_USER_LEN 20  // 27 for MAN, 54 for NRZ
-
 // FSK frame
 static FrameData dataframe;
 
@@ -108,6 +104,9 @@ int main(void) {
     unsigned int framecount = 0;
     int i,j;
 
+    // Frame init
+    Frame_Init(64,20,FRAME_MOD_NRZ);
+
     // Millis timer delay
     uint64_t millis_last = millis();
 
@@ -118,9 +117,9 @@ int main(void) {
     console_puts("Start ...\n");
 
     // Short packet (<= 64), 1200 baud, 4800 Hz deviation, 22 bytes packet size, 40 nibbles
-    Si4032_PacketMode(PACKET_TYPE_SHORT,1200,4800,FRAME_USER_LEN+CRC_SIZE,40);
+    Si4032_PacketMode(PACKET_TYPE_SHORT,1200,4800,Frame_GetUserLength()+Frame_GetCRCSize(),40);
     // Packet bytes to send
-    uint8_t packet_data[FRAME_USER_LEN+CRC_SIZE];
+    uint8_t packet_data[Frame_GetUserLength()+Frame_GetCRCSize()];
 
 	while (1) {
         /* Blink the LED on the board. */
@@ -178,17 +177,17 @@ int main(void) {
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
         // New packet
-        dataframe = NewFrameData(FRAME_USER_LEN + HEAD_SIZE + ECC_SIZE + CRC_SIZE, FRAME_MOD_NRZ);
+        dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
         // Calculate new frame data
         FrameCalculate(&dataframe,framecount,adc_vref,adc_val,adc_temperature);
         j=0;
         // Copy frame data + crc into packet, without header
-        for(i=HEAD_SIZE;i<FRAME_USER_LEN+HEAD_SIZE+CRC_SIZE;i++) {
+        for(i=Frame_GetHeadSize();i<Frame_GetUserLength()+Frame_GetHeadSize()+Frame_GetCRCSize();i++) {
             packet_data[j] = dataframe.value[i];
             j++;
         }
         // Preamble and header is added in Si4032
-        Si4032_WriteShortPacket(packet_data,FRAME_USER_LEN+CRC_SIZE);
+        Si4032_WriteShortPacket(packet_data,Frame_GetUserLength()+Frame_GetCRCSize());
         // Increment frame counter
         framecount++;
 	}
@@ -215,8 +214,8 @@ static void FrameCalculate(FrameData *frame, unsigned int count, uint16_t adc_vr
     frame->value[18] = (adc_supply >> 8) & 0xFF;
     frame->value[19] = (adc_supply >> 0) & 0xFF;
     // Calculate CRC16
-    CalculateCRC16(frame);
-    FrameXOR(frame,0); // XORing NRZ frame
+    Frame_CalculateCRC16(frame);
+    Frame_XOR(frame,0); // XORing NRZ frame
 }
 
 // ADC reading function

@@ -16,13 +16,102 @@
 #include <stdint.h>
 #include "frame.h"
 
+// Private
+static int Bits2Byte(char bits[]);
+static uint16_t _max_frame_len;
+static uint16_t _user_frame_len;
+static uint8_t _frame_coding;
+
+/**
+ * @brief Frame_Init
+ * @param max_frame_len
+ * @param user_frame_len
+ * @param frame_coding
+ * @return
+ */
+int Frame_Init(uint16_t max_frame_len, uint16_t user_frame_len, uint8_t frame_coding) {
+    // Check maximum frame length
+    if(max_frame_len > FRAME_LEN_MAX) {
+        _max_frame_len = FRAME_LEN_MAX;
+    } else {
+        _max_frame_len = max_frame_len;
+    }
+    // Check user frame length
+    if(user_frame_len > _max_frame_len) {
+        _user_frame_len = _max_frame_len;
+    } else {
+        _user_frame_len = user_frame_len;
+    }
+    // Check frame coding
+    if(frame_coding == FRAME_MOD_MAN) {
+        _frame_coding = FRAME_MOD_MAN;
+    } else {
+        _frame_coding = FRAME_MOD_NRZ;
+    }
+    return 0;
+}
+
+/**
+ * @brief Frame_GetMaxLength
+ * @return
+ */
+uint16_t Frame_GetMaxLength(void) {
+    return _max_frame_len;
+}
+
+/**
+ * @brief Frame_GetUserLength
+ * @return
+ */
+uint16_t Frame_GetUserLength(void) {
+    return _user_frame_len;
+}
+
+/**
+ * @brief Frame_GetCoding
+ * @return
+ */
+uint8_t Frame_GetCoding(void) {
+    return _frame_coding;
+}
+
+/**
+ * @brief Frame_GetCRCSize
+ * @return
+ */
+uint8_t Frame_GetCRCSize(void) {
+    return FRAME_CRC_SIZE;
+}
+
+/**
+ * @brief Frame_GetECCSize
+ * @return
+ */
+uint8_t Frame_GetECCSize(void) {
+    return FRAME_ECC_SIZE;
+}
+
+/**
+ * @brief Frame_GetHeadSize
+ * @return
+ */
+uint8_t Frame_GetHeadSize(void) {
+    return FRAME_HEAD_SIZE;
+}
+
 // NRZ
 //{ 0x10, 0xB6, 0xCA, 0x11, 0x22, 0x96, 0x12, 0xF8} transmitted in frame
 //{ 0x86, 0x35, 0xF4, 0x40, 0x93, 0xDF, 0x1A, 0x60} XORed in receiver
 // Manchester
 //{ 0x9A, 0x99, 0x99, 0x99, 0xA9, 0x6D, 0x55, 0x55} transmitted in frame
 // No XORing, scrambling
-FrameData NewFrameData(int frame_length, unsigned char modulation){
+/**
+ * @brief Frame_NewData
+ * @param frame_length
+ * @param modulation
+ * @return
+ */
+FrameData Frame_NewData(int frame_length, unsigned char modulation){
   FrameData newframe;
   newframe.modulation = modulation;
   if(newframe.modulation == FRAME_MOD_NRZ) {
@@ -62,7 +151,12 @@ FrameData NewFrameData(int frame_length, unsigned char modulation){
   return newframe;
 }
 
-FrameHead NewFrameHead(unsigned char modulation) {
+/**
+ * @brief Frame_NewHead
+ * @param modulation
+ * @return
+ */
+FrameHead Frame_NewHead(unsigned char modulation) {
   FrameHead newhead;
   newhead.modulation = modulation;
   // little endian
@@ -74,13 +168,18 @@ FrameHead NewFrameHead(unsigned char modulation) {
   newhead.position = -1;
 
   int i;
-  for(i=0;i<HEAD_LEN+1;i++) {
+  for(i=0;i<FRAME_HEAD_LEN+1;i++) {
     newhead.value[i] = 'x';
   }
   return newhead;
 }
 
-void FrameXOR(FrameData *frame, int start) {
+/**
+ * @brief Frame_XOR
+ * @param frame
+ * @param start
+ */
+void Frame_XOR(FrameData *frame, int start) {
   const uint8_t mask[FRAME_XORMASK_LEN] = { 0x96, 0x83, 0x3E, 0x51, 0xB1, 0x49, 0x08, 0x98,
                                       0x32, 0x05, 0x59, 0x0E, 0xF9, 0x44, 0xC6, 0x26,
                                       0x21, 0x60, 0xC2, 0xEA, 0x79, 0x5D, 0x6D, 0xA1,
@@ -103,13 +202,18 @@ void FrameXOR(FrameData *frame, int start) {
    }
 }
 
-uint16_t CalculateCRC16(FrameData *frame) {
+/**
+ * @brief Frame_CalculateCRC16
+ * @param frame
+ * @return
+ */
+uint16_t Frame_CalculateCRC16(FrameData *frame) {
   // CRC-16/CCITT-FALSE
   int crc = 0xFFFF;          // initial value
   int polynomial = 0x1021;   // 0001 0000 0010 0001  (0, 5, 12)
   int i,j;
   uint8_t byte;
-  for (i=frame->length-CRC_SIZE;i>FRAME_START+1;i--) {
+  for (i=frame->length-FRAME_CRC_SIZE;i>FRAME_START+1;i--) {
     byte = frame->value[i-1] & 0xFF;
     for (j=0;j<8;j++) {
       uint8_t bit = ((byte >> (7-j) & 1) == 1);
@@ -126,7 +230,13 @@ uint16_t CalculateCRC16(FrameData *frame) {
   return crc;
 }
 
-int FrameManchesterEncode(FrameData *frame, int start) {
+/**
+ * @brief Frame_ManchesterEncode
+ * @param frame
+ * @param start
+ * @return
+ */
+int Frame_ManchesterEncode(FrameData *frame, int start) {
   int i,j;
   int ManFramePosition = FRAME_START+1;
   int ManBitPosition = 0;
@@ -134,7 +244,7 @@ int FrameManchesterEncode(FrameData *frame, int start) {
   uint8_t ManByte;
   uint8_t byte;
   uint8_t frame_bits[8];
-  FrameData ManEncode = NewFrameData(frame->length*2, FRAME_MOD_MAN);
+  FrameData ManEncode = Frame_NewData(frame->length*2, FRAME_MOD_MAN);
   //printf("Manchester frame len: %d\n",ManEncode.length);
   for(i=start;i<frame->length;i++) {
     byte = frame->value[i];
@@ -161,7 +271,7 @@ int FrameManchesterEncode(FrameData *frame, int start) {
     }
   }
   // Rewrite frame
-  frame->length = (frame->length*2)-HEAD_SIZE;
+  frame->length = (frame->length*2)-FRAME_HEAD_SIZE;
   frame->modulation = FRAME_MOD_MAN;
   for(i=0;i<frame->length;i++){
     frame->value[i] = ManEncode.value[i];
@@ -170,7 +280,12 @@ int FrameManchesterEncode(FrameData *frame, int start) {
   return 0;
 }
 
-int Bits2Byte(char bits[]) {
+/**
+ * @brief Bits2Byte
+ * @param bits
+ * @return
+ */
+static int Bits2Byte(char bits[]) {
     int i, byteval=0, d=1;
     for (i = 0; i < 8; i++) {     // little endian
     /* for (i = 7; i >= 0; i--) { // big endian */

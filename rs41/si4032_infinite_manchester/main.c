@@ -59,10 +59,6 @@
 #include "utils.h"
 #include "frame.h"
 
-// project frame.h
-//#define FRAME_LEN_MAX 512  // max framelen 150 , user data 140
-//#define FRAME_USER_LEN 100  // ?27 for MAN, 54 for NRZ
-
 // FSK frame
 static FrameData dataframe;
 static const uint8_t packet_preamble[40] = {
@@ -118,6 +114,9 @@ int main(void) {
     unsigned int framecount = 0;
     int i,j;
 
+    // Frame init
+    Frame_Init(512,100,FRAME_MOD_MAN);
+
     // Set different leds state
     gpio_clear(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
@@ -142,7 +141,7 @@ int main(void) {
         // New packet, Manchester coding
         // In RAW bytes (after coding)
         // 8 bytes header, 200 bytes data, 4 bytes CRC = 212 bytes total
-        dataframe = NewFrameData(FRAME_USER_LEN + HEAD_SIZE + ECC_SIZE + CRC_SIZE, FRAME_MOD_MAN);
+        dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
         // Calculate new frame data
         FrameCalculate(&dataframe,framecount,adc_vref,adc_val,adc_temperature);
 
@@ -217,10 +216,14 @@ static void FrameCalculate(FrameData *frame, unsigned int count, uint16_t adc_vr
     // ADC MCU supply voltage in milivolts
     frame->value[18] = (adc_supply >> 8) & 0xFF;
     frame->value[19] = (adc_supply >> 0) & 0xFF;
-    FrameXOR(frame,20); // Xor unused bytes
+    Frame_XOR(frame,20); // Xor unused bytes
+    //int i;
+    //for(i=20;i<frame->length;i+=2) {
+    //    frame->value[i] = 0x01;
+    //}
     // Calculate CRC16
-    CalculateCRC16(frame);
-    FrameManchesterEncode(frame,FRAME_START+1); // Encode Manchester frame
+    Frame_CalculateCRC16(frame);
+    Frame_ManchesterEncode(frame,FRAME_START+1); // Encode Manchester frame
 }
 
 // ADC reading function

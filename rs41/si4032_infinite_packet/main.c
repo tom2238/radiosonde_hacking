@@ -59,10 +59,6 @@
 #include "utils.h"
 #include "frame.h"
 
-// project frame.h
-//#define FRAME_LEN_MAX 512  // max framelen 150 , user data 140
-//#define FRAME_USER_LEN 310  // ?27 for MAN, 54 for NRZ
-
 // FSK frame
 static FrameData dataframe;
 static const uint8_t packet_preamble[40] = {
@@ -117,6 +113,9 @@ int main(void) {
     // Frame infos
     unsigned int framecount = 0;
     int i,j;
+
+    // Frame init
+    Frame_Init(512,310,FRAME_MOD_NRZ);
 
     // Millis timer delay
     uint64_t millis_last = millis();
@@ -187,7 +186,7 @@ int main(void) {
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
         // New packet
-        dataframe = NewFrameData(FRAME_USER_LEN + HEAD_SIZE + ECC_SIZE + CRC_SIZE, FRAME_MOD_NRZ);
+        dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
         // Calculate new frame data
         FrameCalculate(&dataframe,framecount,adc_vref,adc_val,adc_temperature);
 
@@ -240,8 +239,8 @@ static void FrameCalculate(FrameData *frame, unsigned int count, uint16_t adc_vr
     frame->value[18] = (adc_supply >> 8) & 0xFF;
     frame->value[19] = (adc_supply >> 0) & 0xFF;
     // Calculate CRC16
-    CalculateCRC16(frame);
-    FrameXOR(frame,0); // XORing NRZ frame
+    Frame_CalculateCRC16(frame);
+    Frame_XOR(frame,0); // XORing NRZ frame
 }
 
 // ADC reading function
