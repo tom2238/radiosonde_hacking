@@ -48,10 +48,15 @@
 // STM32F100 libraries
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
+#include <libopencm3/stm32/f1/usart.h>
 // Another libraries
 #include <stdint.h>
 #include "init.h"
 #include "ublox6.h"
+#include "utils.h"
+
+void usart3_isr(void);
+void usart1_isr(void);
 
 int main(void) {
     // Setup all parts
@@ -61,27 +66,54 @@ int main(void) {
     gpio_setup();
     // Systick for delay function
     systick_setup();
-    // USART for serial print
-    usart_setup();
-
-    // Set different leds state
-    gpio_clear(LED_GREEN_GPIO,LED_GREEN_PIN);
+    gpio_clear(LED_RED_GPIO,LED_RED_PIN);
+    delay(500);
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
-
+    delay(500);
+    gpio_clear(LED_RED_GPIO,LED_RED_PIN);
+    delay(500);
+    // USART3 for serial print
+    usart_setup();
+    // USART1 for GPS
+    gps_usart_setup();
+    // Set different leds state
+    gpio_set(LED_GREEN_GPIO,LED_GREEN_PIN);
+    gpio_clear(LED_RED_GPIO,LED_RED_PIN);
+    console_puts("Init done!\n");
 
 	while (1) {
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
-        gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
+        //gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
         delay(500);
-
 
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
-        gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
+        //gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
         delay(500);
-
 	}
 
 	return 0;
 }
+
+void usart3_isr(void) {
+    /* Check if we were called because of RXNE. */
+    if (((USART_CR1(XDATA_USART) & USART_CR1_RXNEIE) != 0) && ((USART_SR(XDATA_USART) & USART_SR_RXNE) != 0)) {
+        uint16_t c = usart_recv(XDATA_USART);
+        if (c == 'C') {
+            gpio_clear(LED_RED_GPIO,LED_RED_PIN);
+        } else if (c == 'S'){
+            gpio_set(LED_RED_GPIO,LED_RED_PIN);
+        }
+    }
+}
+
+void usart1_isr(void) {
+    /* Check if we were called because of RXNE. */
+    if (((USART_CR1(GPS_USART) & USART_CR1_RXNEIE) != 0) && ((USART_SR(GPS_USART) & USART_SR_RXNE) != 0)) {
+        // ...
+        uint16_t c = usart_recv(GPS_USART);
+        console_putc(c);
+    }
+}
+

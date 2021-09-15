@@ -27,6 +27,7 @@
 // Another libraries
 #include <stdint.h>
 #include "init.h"
+#include "utils.h"
 
 // Storage for our monotonic system clock.
 // Note that it needs to be volatile since we're modifying it from an interrupt.
@@ -44,24 +45,61 @@ void gpio_setup(void) {
 }
 
 void usart_setup(void) {
+    /* Enable the USART3 interrupt. */
+    nvic_enable_irq(NVIC_USART3_IRQ);
+
     /* Enable clocks for GPIO port B (for GPIO_USART3_TX) and USART3. */
     rcc_periph_clock_enable(XDATA_USART_RCC_GPIO);
     rcc_periph_clock_enable(XDATA_USART_RCC);
     rcc_periph_clock_enable(RCC_AFIO);
 
-    /* Setup GPIO pin GPIO_USART3_TX/GPIO9 on GPIO port B for transmit. */
+    /* Setup GPIO pin GPIO_USART3_TX/GPIO10 on GPIO port B for transmit. */
     gpio_set_mode(XDATA_USART_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART3_TX);
+    /* Setup GPIO pin GPIO_USART3_RX/GPIO11 on GPIO port B for receive. */
+    gpio_set_mode(XDATA_USART_GPIO, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, GPIO_USART3_RX);
 
     /* Setup UART parameters. */
     usart_set_baudrate(XDATA_USART, 9600);
     usart_set_databits(XDATA_USART, 8);
     usart_set_stopbits(XDATA_USART, USART_STOPBITS_1);
-    usart_set_mode(XDATA_USART, USART_MODE_TX);
+    usart_set_mode(XDATA_USART, USART_MODE_TX_RX);
     usart_set_parity(XDATA_USART, USART_PARITY_NONE);
     usart_set_flow_control(XDATA_USART, USART_FLOWCONTROL_NONE);
 
+    /* Enable USART3 Receive interrupt. */
+    usart_enable_rx_interrupt(XDATA_USART);
+
     /* Finally enable the USART. */
     usart_enable(XDATA_USART);
+}
+
+void gps_usart_setup(void) {
+    /* Enable the USART1 interrupt. */
+    nvic_enable_irq(NVIC_USART1_IRQ);
+
+    /* Enable clocks for GPIO port A (for GPIO_USART1_TX) and USART1. */
+    rcc_periph_clock_enable(GPS_USART_RCC_GPIO);
+    rcc_periph_clock_enable(GPS_USART_RCC);
+    rcc_periph_clock_enable(RCC_AFIO);
+
+    /* Setup GPIO pin GPIO_USART1_TX/GPIO9 on GPIO port A for transmit. */
+    gpio_set_mode(GPS_USART_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART1_TX);
+    /* Setup GPIO pin GPIO_USART1_RX/GPIO10 on GPIO port A for receive. */
+    gpio_set_mode(GPS_USART_GPIO, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, GPIO_USART1_RX);
+
+    /* Setup UART parameters. */
+    usart_set_baudrate(GPS_USART, 9600);
+    usart_set_databits(GPS_USART, 8);
+    usart_set_stopbits(GPS_USART, USART_STOPBITS_1);
+    usart_set_mode(GPS_USART, USART_MODE_TX_RX);
+    usart_set_parity(GPS_USART, USART_PARITY_NONE);
+    usart_set_flow_control(GPS_USART, USART_FLOWCONTROL_NONE);
+
+    /* Enable USART1 Receive interrupt. */
+    usart_enable_rx_interrupt(GPS_USART);
+
+    /* Finally enable the USART. */
+    usart_enable(GPS_USART);
 }
 
 void clock_setup(void) {

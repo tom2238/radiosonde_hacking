@@ -14,10 +14,10 @@
  */
 
 /*
- * u-blox 6
- * Receiver Description
- * Including Protocol Specification
- * https://www.u-blox.com/sites/default/files/products/documents/u-blox6_ReceiverDescrProtSpec_%28GPS.G6-SW-10018%29_Public.pdf
+ * u-blox 6 GPS/GLONASS/QZSS Receiver Description
+ * Including Protocol Specification V14
+ * GPS.G6-SW-12013, 60119,   5 Jul 2012
+ * https://www.u-blox.com/sites/default/files/products/documents/u-blox6-GPS-GLONASS-QZSS-V14_ReceiverDescrProtSpec_%28GPS.G6-SW-12013%29_Public.pdf
  */
 
 #ifndef UBLOX6_H
@@ -181,6 +181,48 @@ typedef struct {
     uint32_t sAcc;          // Speed Accuracy Estimate [- cm/s]
     uint32_t cAcc;          // Course / Heading Accuracy Estimate [1e-5 deg]
 } uBlox6_NAVVELNED_Payload;
+
+// Navigation Position Velocity Time Solution
+#define UBLOX6_MSG_ID_NAVPVT 0x07
+typedef struct {
+    uint32_t iTOW;          // GPS time of week of the navigation epoch.See the description of iTOW for details. [- ms]
+    uint16_t year;          // Year (UTC) [- y]
+    uint8_t month;          // Month, range 1..12 (UTC) [- month]
+    uint8_t day;            // Day of month, range 1..31 (UTC) [- day]
+    uint8_t hour;           // Hour of day, range 0..23 (UTC) [- hour]
+    uint8_t min;            // Minute of hour, range 0..59 (UTC) [- min]
+    uint8_t sec;            // Seconds of minute, range 0..60 (UTC) [- sec]
+    uint8_t valid;          // Validity Flags [- -]
+    uint32_t tAcc;          // Time accuracy estimate (UTC) [- ns]
+    int32_t nano;           // Fraction of second, range -1e9 .. 1e9 (UTC) [- ns]
+    uint8_t fixType;        // GNSSfix Type, range 0..5 [- -]
+                            // 0x00 = No Fix
+                            // 0x01 = Dead Reckoning only
+                            // 0x02 = 2D-Fix
+                            // 0x03 = 3D-Fix
+                            // 0x04 = GNSS + dead reckoning combined
+                            // 0x05 = Time only fix
+                            // 0x06..0xff: reserved
+    uint8_t flags;          // Fix Status Flags [- -]
+    uint8_t reserved1;      // Reserved [- -]
+    uint8_t numSV;          // Number of satellites used in Nav Solution [- -]
+    int32_t lon;            // Longitude [1e-7 deg]
+    int32_t lat;            // Latitude [1e-7 deg]
+    int32_t height;         // Height above Ellipsoid [- mm]
+    int32_t hMSL;           // Height above mean sea level [- mm]
+    uint32_t hAcc;          // Horizontal Accuracy Estimate [- mm]
+    uint32_t vAcc;          // Vertical Accuracy Estimate [- mm]
+    int32_t velN;           // NED north velocity [- mm/s]
+    int32_t velE;           // NED east velocity [- mm/s]
+    int32_t velD;           // NED down velocity [- mm/s]
+    int32_t gSpeed;         // Ground Speed (2-D) [- mm/s]
+    int32_t heading;        // Heading of motion 2-D [1e-5 deg]
+    uint32_t sAcc;          // Speed Accuracy Estimate [- mm/s]
+    uint32_t headingAcc;    // Heading Accuracy Estimate [1e-5 deg]
+    uint16_t pDOP;          // Position DOP  [0.01 -]
+    uint16_t reserved2;     // Reserved [- -]
+    uint32_t reserved3;     // Reserved [- -]
+} uBlox6_NAVPVT_Payload;
 
 // UBX Checksum
 typedef struct {
