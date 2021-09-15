@@ -1,0 +1,191 @@
+/*
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
+ * u-blox 6
+ * Receiver Description
+ * Including Protocol Specification
+ * https://www.u-blox.com/sites/default/files/products/documents/u-blox6_ReceiverDescrProtSpec_%28GPS.G6-SW-10018%29_Public.pdf
+ */
+
+#ifndef UBLOX6_H
+#define UBLOX6_H
+
+// UBX Class IDs
+#define UBLOX6_CLASS_ID_NAV 0x01
+#define UBLOX6_CLASS_ID_RXM 0x02
+#define UBLOX6_CLASS_ID_INF 0x04
+#define UBLOX6_CLASS_ID_ACK 0x05
+#define UBLOX6_CLASS_ID_CFG 0x06
+#define UBLOX6_CLASS_ID_MON 0x0A
+#define UBLOX6_CLASS_ID_AID 0x0B
+#define UBLOX6_CLASS_ID_TIM 0x0D
+#define UBLOX6_CLASS_ID_ESF 0x10
+
+// UBX protocol header
+#define UBLOX6_UBX_SYNC_CH1 0xB5
+#define UBLOX6_UBX_SYNC_CH2 0x62
+
+// Get/Set Port Configuration for UART
+#define UBLOX6_MSG_ID_CFGPRT 0x00
+typedef struct {
+    uint8_t portID;         // Port Identifier Number (= 1 or 2 for UART ports) [- -]
+    uint8_t reserved0;      // Reserved [- -]
+    uint16_t txReady;       // Reserved (Alwyas set to zero) up to Firmware 7.01,TX ready PIN configuration (since Firmware 7.01)
+    uint32_t mode;          // A bit mask describing the UART mode [- -]
+    uint32_t baudRate;      // Baudrate in bits/second [- Bit/s]
+    uint16_t inProtoMask;   // A mask describing which input protocols areactive. Each bit of this mask is used for a protocol. Through that, multiple protocols can be definedon a single port. [- -]
+    uint16_t outProtoMask;  // A mask describing which output protocols areactive. Each bit of this mask is used for a protocol. Through that, multiple protocols can be definedon a single port. [- -]
+    uint16_t reserved4;     // Always set to zero [- -]
+    uint16_t reserved5;     // Always set to zero [- -]
+} uBlox6_CFGPRT_Payload;
+
+// Reset Receiver / Clear Backup Data Structures
+#define UBLOX6_MSG_ID_CFGRST 0x04
+typedef struct {
+    uint16_t navBbrMask;    // BBR Sections to clear. The following Special Sets apply: [- -]
+                            // 0x0000 Hotstart
+                            // 0x0001 Warmstart
+                            // 0xFFFF Coldstart
+    uint8_t resetMode;		// Reset Type [- -]
+                            // - 0x00 - Hardware reset (Watchdog) immediately
+                            // - 0x01 - Controlled Software reset
+                            // - 0x02 - Controlled Software reset (GPS only)
+                            // - 0x04 - Hardware reset (Watchdog) after shutdown (>=FW6.0)
+                            // - 0x08 - Controlled GPS stop
+                            // - 0x09 - Controlled GPS start
+                            // - 0x09 - Controlled GPS start
+    uint8_t reserved1;      // Reserved [- -]
+} uBlox6_CFGRST_Payload;
+
+// RXM configuration
+#define UBLOX6_MSG_ID_CFGRXM 0x11
+typedef struct {
+    uint8_t reserved1;      // Always set to 8 [- -]
+    uint8_t lpMode;         // Low Power Mode [- -]
+                            // 0: Max. performance mode
+                            // 1: Power Save Mode (>= FW 6.00 only)
+                            // 2-3: reserved
+                            // 4: Eco mode
+                            // 5-255: reserved
+} ublox6_CFGRXM_Payload;
+
+// Set Message Rate
+#define UBLOX6_MSG_ID_CFGMSG 0x01
+typedef struct {
+    uint8_t msgClass;       // Message Class [- -]
+    uint8_t msgID;          // Message Identifier [- -]
+    uint8_t rate;           // Send rate on current Target [- -]
+} uBlox6_CFGMSG_Payload;
+
+// Get/Set Navigation Engine Settings
+#define UBLOX6_MSG_ID_CFGNAV5 0x24
+typedef struct {
+    uint16_t mask;          // Parameters Bitmask. Only the maskedparameters will be applied. [- -]
+    uint8_t dynModel;		// Dynamic Platform model: [- -]
+                            // 0 = Portable
+                            // 2 = Stationary
+                            // 3 = Pedestrian
+                            // 4 = Automotive
+                            // 5 = Sea
+                            // 6 = Airborne with <1g Acceleration
+                            // 7 = Airborne with <2g Acceleration
+                            // 8 = Airborne with <4g Acceleration
+    uint8_t fixMode;        // Position Fixing Mode. - 1: 2D only - 2: 3D only - 3: Auto 2D/3D [- -]
+    int32_t fixedAlt;       // Fixed altitude (mean sea level) for 2D fix mode. [0.01 m]
+    uint32_t fixedAltVar;   // Fixed altitude variance for 2D mode. [0.0001 m^2]
+    int8_t minElev;         // Minimum Elevation for a GNSS satellite to be used in NAV [- deg]
+    uint8_t drLimit;        // Maximum time to perform dead reckoning (linear extrapolation) in case of GPS signal loss [- s]
+    uint16_t pDop;          // Position DOP Mask to use [0.1 -]
+    uint16_t tDop;          // Time DOP Mask to use [0.1 -]
+    uint16_t pAcc;          // Position Accuracy Mask [- m]
+    uint16_t tAcc;          // Time Accuracy Mask [- m]
+    uint8_t staticHoldThresh;   // Static hold threshold [- cm/s]
+    uint8_t dgpsTimeOut;    // DGPS timeout, firmware 7 and newer only [- s]
+    uint32_t reserved2;     // Always set to zero [- -]
+    uint32_t reserved3;     // Always set to zero [- -]
+    uint32_t reserved4;     // Always set to zero [- -]
+} uBlox6_CFGNAV5_Payload;
+
+// UTC Time Solution
+#define UBLOX6_MSG_ID_NAVTIMEUTC 0x21
+typedef struct {
+    uint32_t iTOW;          // GPS Millisecond Time of Week [- ms]
+    uint32_t tAcc;          // Time Accuracy Estimate [- ns]
+    int32_t nano;           // Nanoseconds of second, range -1e9 .. 1e9 (UTC) [- ns]
+    uint16_t year;          // Year, range 1999..2099 (UTC) [- y]
+    uint8_t month;          // Month, range 1..12 (UTC) [- month]
+    uint8_t day;            // Day of Month, range 1..31 (UTC) [- d]
+    uint8_t hour;           // Hour of Day, range 0..23 (UTC) [- h]
+    uint8_t min;            // Minute of Hour, range 0..59 (UTC) [- min]
+    uint8_t sec;            // Seconds of Minute, range 0..59 (UTC) [- s]
+    uint8_t valid;          // Validity Flags (see graphic below) [- -]
+} uBlox6_NAVTIMEUTC_Payload;
+
+// Navigation Solution Information
+#define UBLOX6_MSG_ID_NAVSOL 0x06
+typedef struct {
+    uint32_t iTOW;          // GPS Millisecond Time of Week [- ms]
+    int32_t fTOW;           // Fractional Nanoseconds remainder of rounded ms above, range -500000 .. 500000 [- ns]
+    int16_t week;           // GPS week (GPS time) [- -]
+    uint8_t gpsFix;         // GPSfix Type, range 0..5 0x00 = No Fix 0x01 = Dead Reckoning only 0x02 = 2D-Fix 0x03 = 3D-Fix 0x04 = GPS + dead reckoning combined 0x05 = Time only fix 0x06..0xff: reserved [- -]
+    uint8_t flags;          // Fix Status Flags (see graphic below) [- -]
+    int32_t ecefX;          // ECEF X coordinate [- cm]
+    int32_t ecefY;          // ECEF Y coordinate [- cm]
+    int32_t ecefZ;          // ECEF Z coordinate [- cm]
+    uint32_t pAcc;          // 3D Position Accuracy Estimate [- cm]
+    int32_t ecefVX;         // ECEF X velocity [- cm/s]
+    int32_t ecefVY;         // ECEF Y velocity [- cm/s]
+    int32_t ecefVZ;         // ECEF Z velocity [- cm/s]
+    uint32_t sAcc;          // Speed Accuracy Estimate [- cm/s]
+    uint16_t pDOP;          // Position DOP [0.01 -]
+    uint8_t reserved1;      // Reserved [- -]
+    uint8_t numSV;          // Number of SVs used in Nav Solution [- -]
+    uint32_t reserved2;     // Reserved [- -]
+} uBlox6_NAVSOL_Payload;
+
+// Geodetic Position Solution
+#define UBLOX6_MSG_ID_NAVPOSLLH 0x02
+typedef struct {
+    uint32_t iTOW;          // GPS Millisecond Time of Week [- ms]
+    int32_t lon;            // Longitude [1e-7 deg]
+    int32_t lat;            // Latitude [1e-7 deg]
+    int32_t height;         // Height above Ellipsoid [- mm]
+    int32_t hMSL;           // Height above mean sea level [- mm]
+    uint32_t hAcc;          // Horizontal Accuracy Estimate [- mm]
+    uint32_t vAcc;          // Vertical Accuracy Estimate [- mm]
+} uBlox6_NAVPOSLLH_Payload;
+
+// Velocity Solution in NED
+#define UBLOX6_MSG_ID_NAVVELNED 0x12
+typedef struct {
+    uint32_t iTOW;          // GPS Millisecond Time of Week [- ms]
+    int32_t velN;           // NED north velocity [- cm/s]
+    int32_t velE;           // NED east velocity [- cm/s]
+    int32_t velD;           // NED down velocity [- cm/s]
+    uint32_t speed;         // Speed (3-D) [- cm/s]
+    uint32_t gSpeed;        // Ground Speed (2-D) [- cm/s]
+    int32_t heading;        // Heading of motion 2-D [1e-5 deg]
+    uint32_t sAcc;          // Speed Accuracy Estimate [- cm/s]
+    uint32_t cAcc;          // Course / Heading Accuracy Estimate [1e-5 deg]
+} uBlox6_NAVVELNED_Payload;
+
+// UBX Checksum
+typedef struct {
+    uint8_t ck_a;           // Checksum A
+    uint8_t ck_b;           // Checksum B
+} uBlox6_Checksum;
+
+#endif // UBLOX6_H

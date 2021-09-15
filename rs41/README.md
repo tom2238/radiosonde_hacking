@@ -16,6 +16,7 @@
 * si4032_aprs - APRS tracker, use FIFO mode and GFSK modulation
 * si4032_rtl433 - Sending temperature and humidity to weather station
 * si4032_marker - Channel marker, use FIFO mode with baudrate changing
+* ublox6 - Writing Ublox 6010 library
 
 ## Si4032 datasheet
 * Si4030/31/32 ISM TRANSMITTER - https://www.silabs.com/documents/public/data-sheets/Si4030-31-32.pdf
