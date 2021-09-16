@@ -36,16 +36,10 @@
 #define VBAT_MON_RCC RCC_GPIOA
 #define VBAT_MON_ADC_CHANNEL ADC_CHANNEL5
 
-// Vaisala RS41 GPS UART
-#define GPS_USART USART1
-#define GPS_USART_GPIO GPIOA
-#define GPS_USART_RCC_GPIO RCC_GPIOA
-#define GPS_USART_RCC RCC_USART1
-
 void gpio_setup(void);
 void adc_setup(void);
 void usart_setup(void);
-void gps_usart_setup(void);
+void gps_usart_setup(uint32_t baudrate);
 void clock_setup(void);
 void systick_setup(void);
 uint64_t millis(void);

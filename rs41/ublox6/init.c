@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include "init.h"
 #include "utils.h"
+#include "ublox6.h"
 
 // Storage for our monotonic system clock.
 // Note that it needs to be volatile since we're modifying it from an interrupt.
@@ -73,7 +74,7 @@ void usart_setup(void) {
     usart_enable(XDATA_USART);
 }
 
-void gps_usart_setup(void) {
+void gps_usart_setup(uint32_t baudrate) {
     /* Enable the USART1 interrupt. */
     nvic_enable_irq(NVIC_USART1_IRQ);
 
@@ -88,7 +89,7 @@ void gps_usart_setup(void) {
     gpio_set_mode(GPS_USART_GPIO, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, GPIO_USART1_RX);
 
     /* Setup UART parameters. */
-    usart_set_baudrate(GPS_USART, 9600);
+    usart_set_baudrate(GPS_USART, baudrate);
     usart_set_databits(GPS_USART, 8);
     usart_set_stopbits(GPS_USART, USART_STOPBITS_1);
     usart_set_mode(GPS_USART, USART_MODE_TX_RX);

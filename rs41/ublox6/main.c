@@ -75,10 +75,15 @@ int main(void) {
     // USART3 for serial print
     usart_setup();
     // USART1 for GPS
-    gps_usart_setup();
+    gps_usart_setup(9600);
+    delay(10);
+    // Intialize ublox
+    // TODO: handle ack/nack reply
+    Ublox6_Init();
     // Set different leds state
     gpio_set(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_clear(LED_RED_GPIO,LED_RED_PIN);
+    delay(500);
     console_puts("Init done!\n");
 
 	while (1) {

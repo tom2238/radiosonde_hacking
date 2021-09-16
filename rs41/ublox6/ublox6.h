@@ -38,6 +38,12 @@
 #define UBLOX6_UBX_SYNC_CH1 0xB5
 #define UBLOX6_UBX_SYNC_CH2 0x62
 
+// Vaisala RS41 GPS UART
+#define GPS_USART USART1
+#define GPS_USART_GPIO GPIOA
+#define GPS_USART_RCC_GPIO RCC_GPIOA
+#define GPS_USART_RCC RCC_USART1
+
 // Get/Set Port Configuration for UART
 #define UBLOX6_MSG_ID_CFGPRT 0x00
 typedef struct {
@@ -114,7 +120,9 @@ typedef struct {
     uint16_t tAcc;          // Time Accuracy Mask [- m]
     uint8_t staticHoldThresh;   // Static hold threshold [- cm/s]
     uint8_t dgpsTimeOut;    // DGPS timeout, firmware 7 and newer only [- s]
-    uint32_t reserved2;     // Always set to zero [- -]
+    uint8_t cnoThreshNumSVs;// Number of satellites required to have C/N0 above cnoThresh for a valid fix. [- -]
+    uint8_t cnoThresh;      // C/N0 threshold for a valid fix. [- dBHz]
+    uint16_t reserved2;     // Always set to zero [- -]
     uint32_t reserved3;     // Always set to zero [- -]
     uint32_t reserved4;     // Always set to zero [- -]
 } uBlox6_CFGNAV5_Payload;
@@ -229,5 +237,14 @@ typedef struct {
     uint8_t ck_a;           // Checksum A
     uint8_t ck_b;           // Checksum B
 } uBlox6_Checksum;
+
+// Functions
+// Public
+void Ublox6_SendConfigRST(uBlox6_CFGRST_Payload *message);
+void Ublox6_SendConfigPRT(uBlox6_CFGPRT_Payload *message);
+void Ublox6_SendConfigRXM(ublox6_CFGRXM_Payload *message);
+void Ublox6_SendConfigMSG(uBlox6_CFGMSG_Payload *message);
+void Ublox6_SendConfigNAV5(uBlox6_CFGNAV5_Payload *message);
+void Ublox6_Init(void);
 
 #endif // UBLOX6_H
