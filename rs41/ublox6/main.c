@@ -75,27 +75,53 @@ int main(void) {
     // USART3 for serial print
     usart_setup();
     // USART1 for GPS
-    gps_usart_setup(9600);
+    gps_usart_setup(UBLOX6_UART_SPEED_DEFAULT);
     delay(10);
     // Intialize ublox
-    // TODO: handle ack/nack reply
     Ublox6_Init();
     // Set different leds state
     gpio_set(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_clear(LED_RED_GPIO,LED_RED_PIN);
     delay(500);
     console_puts("Init done!\n");
+    uBlox6_GPSData gpsData;
+    // Millis timer delay
+    uint64_t millis_last = millis();
 
 	while (1) {
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
-        //gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
-        delay(500);
+
+        // Wait for 1000 ms
+        while (millis() < millis_last);
+        // Save millis
+        millis_last = millis() + 1000;
 
         /* Blink the LED on the board. */
-        gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
-        //gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
-        delay(500);
+        gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);        
+        delay(200);
+
+        Ublox6_GetLastData(&gpsData);
+        console_print_int(gpsData.year);
+        console_puts(".");
+        console_print_int(gpsData.month);
+        console_puts(".");
+        console_print_int(gpsData.day);
+        console_puts(". ");
+        console_print_int(gpsData.hour);
+        console_puts(":");
+        console_print_int(gpsData.min);
+        console_puts(":");
+        console_print_int(gpsData.sec);
+        console_puts(", Fix:");
+        console_print_int(gpsData.gpsFix);
+        console_puts(", SVs:");
+        console_print_int(gpsData.numSV);
+        console_puts(", Lat:");
+        console_print_int(gpsData.lat);
+        console_puts(", Lon:");
+        console_print_int(gpsData.lon);
+        console_puts("\n");
 	}
 
 	return 0;
@@ -116,9 +142,8 @@ void usart3_isr(void) {
 void usart1_isr(void) {
     /* Check if we were called because of RXNE. */
     if (((USART_CR1(GPS_USART) & USART_CR1_RXNEIE) != 0) && ((USART_SR(GPS_USART) & USART_SR_RXNE) != 0)) {
-        // ...
         uint16_t c = usart_recv(GPS_USART);
-        console_putc(c);
+        //console_putc(c);
+        Ublox6_HandleByte((uint8_t)c);
     }
 }
-

@@ -60,7 +60,7 @@ void usart_setup(void) {
     gpio_set_mode(XDATA_USART_GPIO, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, GPIO_USART3_RX);
 
     /* Setup UART parameters. */
-    usart_set_baudrate(XDATA_USART, 9600);
+    usart_set_baudrate(XDATA_USART, 38400);
     usart_set_databits(XDATA_USART, 8);
     usart_set_stopbits(XDATA_USART, USART_STOPBITS_1);
     usart_set_mode(XDATA_USART, USART_MODE_TX_RX);

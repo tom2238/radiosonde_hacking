@@ -34,6 +34,11 @@
 #define UBLOX6_CLASS_ID_TIM 0x0D
 #define UBLOX6_CLASS_ID_ESF 0x10
 
+// Message Acknowledged
+#define UBLOX6_MSG_ID_ACKACK 0x01
+// Message Not-Acknowledged
+#define UBLOX6_MSG_ID_ACKNAK 0x00
+
 // UBX protocol header
 #define UBLOX6_UBX_SYNC_CH1 0xB5
 #define UBLOX6_UBX_SYNC_CH2 0x62
@@ -43,6 +48,10 @@
 #define GPS_USART_GPIO GPIOA
 #define GPS_USART_RCC_GPIO RCC_GPIOA
 #define GPS_USART_RCC RCC_USART1
+
+// UART1 speed
+#define UBLOX6_UART_SPEED_DEFAULT 9600
+#define UBLOX6_UART_SPEED_FAST 38400
 
 // Get/Set Port Configuration for UART
 #define UBLOX6_MSG_ID_CFGPRT 0x00
@@ -238,13 +247,62 @@ typedef struct {
     uint8_t ck_b;           // Checksum B
 } uBlox6_Checksum;
 
+// UBX Ack/Nack
+typedef struct {
+    uint8_t clsID;          // Message Class [- -]
+    uint8_t msgID;          // Message Identifier [- -]
+    uint8_t ck_a;
+    uint8_t ck_b;
+} uBlox6_ACKACK_Payload;
+
+// Ublox UBX header
+typedef struct  __attribute__((packed)){
+    uint8_t sc1;            // 0xB5
+    uint8_t sc2;            // 0x62
+    uint8_t messageClass;
+    uint8_t messageId;
+    uint16_t payloadSize;
+} uBlox6_Header;
+
+// Handle all payloads
+typedef union {
+    uBlox6_CFGPRT_Payload cfgprt;
+    uBlox6_CFGRST_Payload cfgrst;
+    ublox6_CFGRXM_Payload cfgrxm;
+    uBlox6_CFGMSG_Payload cfgmsg;
+    uBlox6_CFGNAV5_Payload cfgnav5;
+    uBlox6_NAVTIMEUTC_Payload navtimeutc;
+    uBlox6_NAVSOL_Payload navsol;
+    uBlox6_NAVPOSLLH_Payload navposllh;
+    uBlox6_NAVVELNED_Payload navvelned;
+    uBlox6_NAVPVT_Payload navpvt;
+    uBlox6_ACKACK_Payload ackack;
+} ublox6_PacketData;
+
+// General packet for all payloads
+typedef struct __attribute__((packed)){
+    uBlox6_Header header;
+    ublox6_PacketData data;
+} uBlox6_Packet;
+
+// User GPS data
+typedef struct {
+    uint16_t year;          // Year, range 1999..2099 (UTC) [- y]
+    uint8_t month;          // Month, range 1..12 (UTC) [- month]
+    uint8_t day;            // Day of Month, range 1..31 (UTC) [- d]
+    uint8_t hour;           // Hour of Day, range 0..23 (UTC) [- h]
+    uint8_t min;            // Minute of Hour, range 0..59 (UTC) [- min]
+    uint8_t sec;            // Seconds of Minute, range 0..59 (UTC) [- s]
+    uint8_t gpsFix;         // GPSfix Type
+    uint8_t numSV;          // Number of SVs used in Nav Solution
+    int32_t lon;            // Longitude [1e-7 deg]
+    int32_t lat;            // Latitude [1e-7 deg]
+}uBlox6_GPSData;
+
 // Functions
 // Public
-void Ublox6_SendConfigRST(uBlox6_CFGRST_Payload *message);
-void Ublox6_SendConfigPRT(uBlox6_CFGPRT_Payload *message);
-void Ublox6_SendConfigRXM(ublox6_CFGRXM_Payload *message);
-void Ublox6_SendConfigMSG(uBlox6_CFGMSG_Payload *message);
-void Ublox6_SendConfigNAV5(uBlox6_CFGNAV5_Payload *message);
 void Ublox6_Init(void);
+void Ublox6_HandleByte(uint8_t data);
+void Ublox6_GetLastData(uBlox6_GPSData *gpsEntry);
 
 #endif // UBLOX6_H
