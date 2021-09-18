@@ -24,6 +24,8 @@ LIBRARY_DIR = ../libraries
 DEFS += -I$(LIBRARY_DIR)
 # Add library objects
 OBJS += $(LIBRARY_DIR)/utils.o
+OBJS += $(LIBRARY_DIR)/frame.o
+OBJS += $(LIBRARY_DIR)/si4032.o
 # Add project custom objects
 OBJS += init.o ublox6.o
 # libOpenCM dir

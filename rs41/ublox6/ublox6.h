@@ -275,7 +275,7 @@ typedef union {
     uBlox6_NAVSOL_Payload navsol;
     uBlox6_NAVPOSLLH_Payload navposllh;
     uBlox6_NAVVELNED_Payload navvelned;
-    uBlox6_NAVPVT_Payload navpvt;
+    //uBlox6_NAVPVT_Payload navpvt;
     uBlox6_ACKACK_Payload ackack;
 } ublox6_PacketData;
 
@@ -297,7 +297,11 @@ typedef struct {
     uint8_t numSV;          // Number of SVs used in Nav Solution
     int32_t lon;            // Longitude [1e-7 deg]
     int32_t lat;            // Latitude [1e-7 deg]
-}uBlox6_GPSData;
+    int32_t hMSL;           // Height above mean sea level [- mm]
+    uint32_t speed;         // Speed (3-D) [- cm/s]
+    uint32_t gSpeed;        // Ground Speed (2-D) [- cm/s]
+    int32_t heading;        // Heading of motion 2-D [1e-5 deg]
+} uBlox6_GPSData;
 
 // Functions
 // Public

@@ -178,30 +178,36 @@ void Ublox6_Init(void) {
         Ublox6_SendConfigRXM(&cfgrxm);
     } while (!Ublox6_WaitForACK());
 
-    uBlox6_CFGMSG_Payload cfgmsg;       // Activate certain messages on each port
-    cfgmsg.msgClass = 0x01;             // Message Class
-    cfgmsg.msgID = 0x02;                // Message Identifier, NAV-POSLLH
-    cfgmsg.rate = 1;                    // Send rate on current Target
+    uBlox6_CFGMSG_Payload cfgmsg;           // Activate certain messages on each port
+    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+    cfgmsg.msgID = UBLOX6_MSG_ID_NAVPOSLLH; // Message Identifier, NAV-POSLLH
+    cfgmsg.rate = 1;                        // Send rate on current Target
     do {
         Ublox6_SendConfigMSG(&cfgmsg);
     } while (!Ublox6_WaitForACK());
-    cfgmsg.msgClass = 0x01;             // Message Class
-    cfgmsg.msgID = 0x06;                // Message Identifier, NAV-SOL
-    cfgmsg.rate = 1;                    // Send rate on current Target
+    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+    cfgmsg.msgID = UBLOX6_MSG_ID_NAVSOL;    // Message Identifier, NAV-SOL
+    cfgmsg.rate = 1;                        // Send rate on current Target
     do {
         Ublox6_SendConfigMSG(&cfgmsg);
     } while (!Ublox6_WaitForACK());
-    cfgmsg.msgClass = 0x01;             // Message Class
-    cfgmsg.msgID = 0x21;                // Message Identifier, NAV-TIMEUTC
-    cfgmsg.rate = 1;                    // Send rate on current Target
+    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+    cfgmsg.msgID = UBLOX6_MSG_ID_NAVTIMEUTC;// Message Identifier, NAV-TIMEUTC
+    cfgmsg.rate = 1;                        // Send rate on current Target
+    do {
+        Ublox6_SendConfigMSG(&cfgmsg);
+    } while (!Ublox6_WaitForACK());
+    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+    cfgmsg.msgID = UBLOX6_MSG_ID_NAVVELNED; // Message Identifier, NAV-VELNED
+    cfgmsg.rate = 1;                        // Send rate on current Target
     do {
         Ublox6_SendConfigMSG(&cfgmsg);
     } while (!Ublox6_WaitForACK());
 
     uBlox6_CFGNAV5_Payload cfgnav5;     // Navigation Engine Settings
     cfgnav5.mask = 0b00000001111111111; // Apply dynamic model settings, Apply minimum elevation settings, Apply fix mode settings, Apply position mask settings,  Apply time mask settings, Apply static hold settings, Apply DGPS settings.
-    cfgnav5.dynModel = 7;               // Dynamic Platform model, 7 = Airborne with <2g Acceleration
-    cfgnav5.fixMode = 2;                // Position Fixing Mode, 2 = 3D only
+    cfgnav5.dynModel = 7;               // Dynamic Platform model, 7 = Airborne with <2g Acceleration, 0 = Portable
+    cfgnav5.fixMode = 2;                // Position Fixing Mode, 3 = Fix 3D only
     cfgnav5.fixedAlt = 0;               // Fixed altitude (mean sea level) for 2D fix mode, 0*0.01 meters
     cfgnav5.fixedAltVar = 10000;        // Fixed altitude variance for 2D mode. 10000*0.0001 meters^2
     cfgnav5.minElev = 5;                // Minimum Elevation for a GNSS satellite to be used in NAV, 5 deg
@@ -274,18 +280,8 @@ static void Ublox6_HandlePacket(uBlox6_Packet *packet) {
         // If yes, check Class and ID to get correct data
         if (packet->header.messageClass == UBLOX6_CLASS_ID_ACK && packet->header.messageId == UBLOX6_MSG_ID_ACKACK) {
             _ack_received = 1;
-            /*console_puts("ACK cls:");
-            console_print_int(packet->data.ackack.clsID);
-            console_puts(", id:");
-            console_print_int(packet->data.ackack.msgID);
-            console_puts("\n");*/
         } else if (packet->header.messageClass == UBLOX6_CLASS_ID_ACK && packet->header.messageId == UBLOX6_MSG_ID_ACKNAK) {
             _nack_received = 1;
-           /* console_puts("NACK cls:");
-            console_print_int(packet->data.ackack.clsID);
-            console_puts(", id:");
-            console_print_int(packet->data.ackack.msgID);
-            console_puts("\n");*/
         } else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVTIMEUTC) {
             _current_GPSData.day = packet->data.navtimeutc.day;
             _current_GPSData.hour = packet->data.navtimeutc.hour;
@@ -299,15 +295,13 @@ static void Ublox6_HandlePacket(uBlox6_Packet *packet) {
         } else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVPOSLLH) {
             _current_GPSData.lat = packet->data.navposllh.lat;
             _current_GPSData.lon = packet->data.navposllh.lon;
+            _current_GPSData.hMSL = packet->data.navposllh.hMSL;
+        } else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVVELNED) {
+            _current_GPSData.gSpeed = packet->data.navvelned.gSpeed;
+            _current_GPSData.heading = packet->data.navvelned.heading;
+            _current_GPSData.speed = packet->data.navvelned.speed;
         }
     }
-    /*console_puts("MSG class: ");
-    console_print_int(packet->header.messageClass);
-    console_puts(", MSG ID: ");
-    console_print_int(packet->header.messageId);
-    console_puts(", SIZE: ");
-    console_print_int(packet->header.payloadSize);
-    console_puts("\n");*/
 }
 
 /**

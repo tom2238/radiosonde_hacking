@@ -54,9 +54,12 @@
 #include "init.h"
 #include "ublox6.h"
 #include "utils.h"
+#include "si4032.h"
+#include "frame.h"
 
 void usart3_isr(void);
 void usart1_isr(void);
+static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps);
 
 int main(void) {
     // Setup all parts
@@ -66,12 +69,23 @@ int main(void) {
     gpio_setup();
     // Systick for delay function
     systick_setup();
+    // SPI config
+    spi_setup();
+    // Wait at least 15ms before any initialization SPI commands are sent to the radio
+    delay(20);
+    // Inicialize Si4032
+    Si4032_Init();
+    // For some reason we have to do this again
+    delay(20);
+    Si4032_Init2();
+
     gpio_clear(LED_RED_GPIO,LED_RED_PIN);
     delay(500);
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
     delay(500);
     gpio_clear(LED_RED_GPIO,LED_RED_PIN);
     delay(500);
+
     // USART3 for serial print
     usart_setup();
     // USART1 for GPS
@@ -83,10 +97,20 @@ int main(void) {
     gpio_set(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_clear(LED_RED_GPIO,LED_RED_PIN);
     delay(500);
-    console_puts("Init done!\n");
+
+    // Frame init
+    Frame_Init(64,35,FRAME_MOD_NRZ);
+
+    // Short packet (<= 64), 4800 baud, 3600 Hz deviation, 22 bytes packet size, 80 nibbles
+    Si4032_PacketMode(PACKET_TYPE_SHORT,4800,2400,Frame_GetUserLength()+Frame_GetCRCSize(),80);
+
     uBlox6_GPSData gpsData;
     // Millis timer delay
     uint64_t millis_last = millis();
+    // FSK frame
+    static FrameData dataframe;
+
+    console_puts("Init done!\n");
 
 	while (1) {
         /* Blink the LED on the board. */
@@ -102,6 +126,7 @@ int main(void) {
         delay(200);
 
         Ublox6_GetLastData(&gpsData);
+
         console_print_int(gpsData.year);
         console_puts(".");
         console_print_int(gpsData.month);
@@ -121,7 +146,23 @@ int main(void) {
         console_print_int(gpsData.lat);
         console_puts(", Lon:");
         console_print_int(gpsData.lon);
+        console_puts(", H:");
+        console_print_int(gpsData.heading);
+        console_puts(", gS:");
+        console_print_int(gpsData.gSpeed);
+        console_puts(", S:");
+        console_print_int(gpsData.speed);
         console_puts("\n");
+
+        // New packet
+        dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
+        // Calculate new frame data
+        FrameCalculate(&dataframe,&gpsData);
+        // Calculate CRC16
+        Frame_CalculateCRC16(&dataframe);
+        Frame_XOR(&dataframe,0); // XORing NRZ frame
+        // Preamble and header is added in Si4032
+        Si4032_WriteShortPacket((((uint8_t*)&dataframe.value) + Frame_GetHeadSize()), Frame_GetUserLength()+Frame_GetCRCSize());
 	}
 
 	return 0;
@@ -146,4 +187,46 @@ void usart1_isr(void) {
         //console_putc(c);
         Ublox6_HandleByte((uint8_t)c);
     }
+}
+
+static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps) {
+    // GPS TIME UTC
+    frame->value[8] = (gps->year >> 24) & 0xFF;
+    frame->value[9] = (gps->year >> 16) & 0xFF;
+    frame->value[10] = (gps->year >> 8) & 0xFF;
+    frame->value[11] = (gps->year >> 0) & 0xFF;
+    frame->value[12] = gps->month;
+    frame->value[13] = gps->day;
+    frame->value[14] = gps->hour;
+    frame->value[15] = gps->min;
+    frame->value[16] = gps->sec;
+    // GPS NAV SOL
+    frame->value[17] = gps->gpsFix;
+    frame->value[18] = gps->numSV;
+    // GPS NAV POSLLH
+    frame->value[19] = (gps->lon >> 24) & 0xFF;
+    frame->value[20] = (gps->lon >> 16) & 0xFF;
+    frame->value[21] = (gps->lon >> 8) & 0xFF;
+    frame->value[22] = (gps->lon >> 0) & 0xFF;
+    frame->value[23] = (gps->lat >> 24) & 0xFF;
+    frame->value[24] = (gps->lat >> 16) & 0xFF;
+    frame->value[25] = (gps->lat >> 8) & 0xFF;
+    frame->value[26] = (gps->lat >> 0) & 0xFF;
+    frame->value[27] = (gps->hMSL >> 24) & 0xFF;
+    frame->value[28] = (gps->hMSL >> 16) & 0xFF;
+    frame->value[29] = (gps->hMSL >> 8) & 0xFF;
+    frame->value[30] = (gps->hMSL >> 0) & 0xFF;
+    // GPS NAV VELNED
+    frame->value[31] = (gps->speed >> 24) & 0xFF;
+    frame->value[32] = (gps->speed >> 16) & 0xFF;
+    frame->value[33] = (gps->speed >> 8) & 0xFF;
+    frame->value[34] = (gps->speed >> 0) & 0xFF;
+    frame->value[35] = (gps->gSpeed >> 24) & 0xFF;
+    frame->value[36] = (gps->gSpeed >> 16) & 0xFF;
+    frame->value[37] = (gps->gSpeed >> 8) & 0xFF;
+    frame->value[38] = (gps->gSpeed >> 0) & 0xFF;
+    frame->value[39] = (gps->heading >> 24) & 0xFF;
+    frame->value[40] = (gps->heading >> 16) & 0xFF;
+    frame->value[41] = (gps->heading >> 8) & 0xFF;
+    frame->value[42] = (gps->heading >> 0) & 0xFF;
 }
