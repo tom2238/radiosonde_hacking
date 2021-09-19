@@ -28,12 +28,8 @@
 // Private
 static void Ublox6_CalculateChecksum(uBlox6_Checksum *checksum, uint8_t msgClass, uint8_t msgId, const uint8_t *payload, uint16_t size);
 static void Ublox6_SendPayload(uint8_t msgClass, uint8_t msgID, uint8_t *payload, uint16_t size);
-static void Ublox6_SendConfigRST(uBlox6_CFGRST_Payload *message);
-static void Ublox6_SendConfigPRT(uBlox6_CFGPRT_Payload *message);
-static void Ublox6_SendConfigRXM(ublox6_CFGRXM_Payload *message);
-static void Ublox6_SendConfigMSG(uBlox6_CFGMSG_Payload *message);
-static void Ublox6_SendConfigNAV5(uBlox6_CFGNAV5_Payload *message);
-static void Ublox6_HandlePacket(uBlox6_Packet *packet);
+static uint8_t Ublox6_SendPayloadAndWait(uint8_t msgClass, uint8_t msgID, uint8_t *payload, uint16_t size);
+static inline void Ublox6_HandlePacket(uBlox6_Packet *packet);
 static uint8_t Ublox6_WaitForACK(void);
 
 // Ack/Nack Messages: i.e. as replies to CFG Input Messages
@@ -82,6 +78,9 @@ static void Ublox6_CalculateChecksum(uBlox6_Checksum *checksum, uint8_t msgClass
  * @param size
  */
 static void Ublox6_SendPayload(uint8_t msgClass, uint8_t msgID, uint8_t *payload, uint16_t size) {
+    // Clear ACK/NACK status flags
+    _ack_received = 0;
+    _nack_received = 0;
     uBlox6_Checksum crc;
     Ublox6_CalculateChecksum(&crc,msgClass,msgID,payload,size);
     // Send header
@@ -104,55 +103,46 @@ static void Ublox6_SendPayload(uint8_t msgClass, uint8_t msgID, uint8_t *payload
 }
 
 /**
- * @brief Ublox6_SendConfigRST
- * @param message
+ * @brief Ublox6_SendPayloadAndWait
+ * @param msgClass
+ * @param msgID
+ * @param payload
+ * @param size
+ * @return
  */
-static void Ublox6_SendConfigRST(uBlox6_CFGRST_Payload *message) {
-    Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRST,(uint8_t*)message,sizeof(uBlox6_CFGRST_Payload));
-}
-
-/**
- * @brief Ublox6_SendConfigPRT
- * @param message
- */
-static void Ublox6_SendConfigPRT(uBlox6_CFGPRT_Payload *message) {
-    Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGPRT,(uint8_t*)message,sizeof(uBlox6_CFGPRT_Payload));
-}
-
-/**
- * @brief Ublox6_SendConfigRXM
- * @param message
- */
-static void Ublox6_SendConfigRXM(ublox6_CFGRXM_Payload *message) {
-    Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRXM,(uint8_t*)message,sizeof(ublox6_CFGRXM_Payload));
-}
-
-/**
- * @brief Ublox6_SendConfigMSG
- * @param message
- */
-static void Ublox6_SendConfigMSG(uBlox6_CFGMSG_Payload *message) {
-    Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)message,sizeof(uBlox6_CFGMSG_Payload));
-}
-
-/**
- * @brief Ublox6_SendConfigNAV5
- * @param message
- */
-static void Ublox6_SendConfigNAV5(uBlox6_CFGNAV5_Payload *message) {
-    Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGNAV5,(uint8_t*)message,sizeof(uBlox6_CFGNAV5_Payload));
+static uint8_t Ublox6_SendPayloadAndWait(uint8_t msgClass, uint8_t msgID, uint8_t *payload, uint16_t size) {
+    uint8_t send_retries = 10;
+    uint8_t success = 0;
+    do {
+        Ublox6_SendPayload(msgClass,msgID,payload,size);
+        success = Ublox6_WaitForACK();
+    } while (!success && send_retries-- > 0);
+    return success;
 }
 
 /**
  * @brief Ublox6_Init
  */
-void Ublox6_Init(void) {
+uint8_t Ublox6_Init(void) {
+    uint8_t success_error = 0;
+    // USART1 for GPS, speed 38400 bds
+    /*gps_usart_setup(UBLOX6_UART_SPEED_FAST);
+    delay(50);
+    */
     uBlox6_CFGRST_Payload cfgrst;       // Reset
     cfgrst.navBbrMask = 0xFFFF;         // 0xFFFF Coldstart
     cfgrst.resetMode = 0x01;            // 0x01 - Controlled Software reset
     cfgrst.reserved1 = 0x00;            // Reserved
-    Ublox6_SendConfigRST(&cfgrst);
-    delay(200);
+    /*Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRST,(uint8_t*)&cfgrst,sizeof(uBlox6_CFGRST_Payload));
+    delay(250);
+    */
+    // USART1 for GPS, speed 9600 bds
+    gps_usart_setup(UBLOX6_UART_SPEED_DEFAULT);
+    delay(50);
+
+    // Reset
+    Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRST,(uint8_t*)&cfgrst,sizeof(uBlox6_CFGRST_Payload));
+    delay(250);
 
     uBlox6_CFGPRT_Payload cfgprt;       // Preferred protocol(s) needs to be enabled on a port
     cfgprt.portID = 1;                  // Port Identifier Number,  1 = UART1
@@ -164,49 +154,68 @@ void Ublox6_Init(void) {
     cfgprt.outProtoMask = 1;            // A mask describing which output protocols are active. 1 = UBX enable
     cfgprt.reserved4 = 0;               // Always set to zero
     cfgprt.reserved5 = 0;               // Always set to zero
-    Ublox6_SendConfigPRT(&cfgprt);
-    delay(10);
-    /*
-     *  Change USART baudrate
-     */
+    Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGPRT,(uint8_t*)&cfgprt,sizeof(uBlox6_CFGPRT_Payload));
+    delay(50);
+
+    // USART1 for GPS, speed 38400 bds
     gps_usart_setup(UBLOX6_UART_SPEED_FAST);
-    delay(100);
+    delay(50);
+
     ublox6_CFGRXM_Payload cfgrxm;
     cfgrxm.lpMode = 4;                  // Low Power Mode, 4 = Continuous Mode
     cfgrxm.reserved1 = 8;               // Always set to 8
-    do {
-        Ublox6_SendConfigRXM(&cfgrxm);
-    } while (!Ublox6_WaitForACK());
+    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRXM,(uint8_t*)&cfgrxm,sizeof(ublox6_CFGRXM_Payload))) {
+        success_error++;
+    }
+
+    uBlox6_CFGRATE_Payload cfgrate;
+    cfgrate.measRate = 250;            // Measurement Rate, 1000 ms
+    cfgrate.navRate = 1;                // Navigation Rate, in number of measurementcycles. This parameter cannot be changed, andmust be set to 1.
+    cfgrate.timeRef = 0;                // Alignment to reference time: 0 = UTC
+    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRATE,(uint8_t*)&cfgrate,sizeof(uBlox6_CFGRATE_Payload))) {
+        success_error++;
+    }
 
     uBlox6_CFGMSG_Payload cfgmsg;           // Activate certain messages on each port
     cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
-    cfgmsg.msgID = UBLOX6_MSG_ID_NAVPOSLLH; // Message Identifier, NAV-POSLLH
-    cfgmsg.rate = 1;                        // Send rate on current Target
-    do {
-        Ublox6_SendConfigMSG(&cfgmsg);
-    } while (!Ublox6_WaitForACK());
-    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
     cfgmsg.msgID = UBLOX6_MSG_ID_NAVSOL;    // Message Identifier, NAV-SOL
     cfgmsg.rate = 1;                        // Send rate on current Target
-    do {
-        Ublox6_SendConfigMSG(&cfgmsg);
-    } while (!Ublox6_WaitForACK());
+    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+        success_error++;
+    }
+
     cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
     cfgmsg.msgID = UBLOX6_MSG_ID_NAVTIMEUTC;// Message Identifier, NAV-TIMEUTC
     cfgmsg.rate = 1;                        // Send rate on current Target
-    do {
-        Ublox6_SendConfigMSG(&cfgmsg);
-    } while (!Ublox6_WaitForACK());
+    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+        success_error++;
+    }
+    /*
     cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
     cfgmsg.msgID = UBLOX6_MSG_ID_NAVVELNED; // Message Identifier, NAV-VELNED
+    cfgmsg.rate = 2;                        // Send rate on current Target
+    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+        success_error++;
+    }*/
+
+    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+    cfgmsg.msgID = UBLOX6_MSG_ID_NAVPOSLLH; // Message Identifier, NAV-POSLLH
     cfgmsg.rate = 1;                        // Send rate on current Target
-    do {
-        Ublox6_SendConfigMSG(&cfgmsg);
-    } while (!Ublox6_WaitForACK());
+    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+        success_error++;
+    }
+
+
+    /*cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+    cfgmsg.msgID = UBLOX6_MSG_ID_NAVSTATUS; // Message Identifier, NAV-STATUS
+    cfgmsg.rate = 2;                        // Send rate on current Target
+    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+        success_error++;
+    }*/
 
     uBlox6_CFGNAV5_Payload cfgnav5;     // Navigation Engine Settings
     cfgnav5.mask = 0b00000001111111111; // Apply dynamic model settings, Apply minimum elevation settings, Apply fix mode settings, Apply position mask settings,  Apply time mask settings, Apply static hold settings, Apply DGPS settings.
-    cfgnav5.dynModel = 7;               // Dynamic Platform model, 7 = Airborne with <2g Acceleration, 0 = Portable
+    cfgnav5.dynModel = 6;               // Dynamic Platform model, 6 = Airborne with <1g Acceleration, 0 = Portable
     cfgnav5.fixMode = 2;                // Position Fixing Mode, 3 = Fix 3D only
     cfgnav5.fixedAlt = 0;               // Fixed altitude (mean sea level) for 2D fix mode, 0*0.01 meters
     cfgnav5.fixedAltVar = 10000;        // Fixed altitude variance for 2D mode. 10000*0.0001 meters^2
@@ -223,9 +232,10 @@ void Ublox6_Init(void) {
     cfgnav5.reserved2 = 0;              // Always set to zero
     cfgnav5.reserved3 = 0;              // Always set to zero
     cfgnav5.reserved4 = 0;              // Always set to zero
-    do {
-        Ublox6_SendConfigNAV5(&cfgnav5);
-    } while (!Ublox6_WaitForACK());
+    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGNAV5,(uint8_t*)&cfgnav5,sizeof(uBlox6_CFGNAV5_Payload))) {
+        success_error++;
+    }
+    return success_error;
 }
 
 /**
@@ -269,7 +279,7 @@ void Ublox6_HandleByte(uint8_t data) {
  * @brief Ublox6_HandlePacket
  * @param packet
  */
-static void Ublox6_HandlePacket(uBlox6_Packet *packet) {
+static inline void Ublox6_HandlePacket(uBlox6_Packet *packet) {
     // Check checksum for received packet
     uBlox6_Checksum ck_calculated;
     Ublox6_CalculateChecksum(&ck_calculated,packet->header.messageClass,packet->header.messageId,(const uint8_t *)&packet->data,packet->header.payloadSize);
@@ -289,18 +299,28 @@ static void Ublox6_HandlePacket(uBlox6_Packet *packet) {
             _current_GPSData.month = packet->data.navtimeutc.month;
             _current_GPSData.sec = packet->data.navtimeutc.sec;
             _current_GPSData.year = packet->data.navtimeutc.year;
+            console_putc('T');
+
         } else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVSOL) {
             _current_GPSData.gpsFix = packet->data.navsol.gpsFix;
             _current_GPSData.numSV = packet->data.navsol.numSV;
+            console_putc('S');
+
         } else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVPOSLLH) {
             _current_GPSData.lat = packet->data.navposllh.lat;
             _current_GPSData.lon = packet->data.navposllh.lon;
             _current_GPSData.hMSL = packet->data.navposllh.hMSL;
-        } else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVVELNED) {
+            console_putc('P');
+
+        } /*else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVVELNED) {
             _current_GPSData.gSpeed = packet->data.navvelned.gSpeed;
             _current_GPSData.heading = packet->data.navvelned.heading;
             _current_GPSData.speed = packet->data.navvelned.speed;
-        }
+            console_putc('V');
+        } else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVSTATUS) {
+            //_current_GPSData.gpsFix = packet->data.navstatus.gpsFix;
+            console_putc('U');
+        }*/
     }
 }
 
@@ -309,14 +329,9 @@ static void Ublox6_HandlePacket(uBlox6_Packet *packet) {
  * @return
  */
 static uint8_t Ublox6_WaitForACK(void) {
-    _ack_received = 0;
-    _nack_received = 0;
     uint8_t timeout = 200;
-    while(!_ack_received && !_nack_received){
+    while (!_ack_received && !_nack_received && timeout-- > 0) {
         delay(1);
-        if (!timeout--){
-            break;
-        }
     }
     return _ack_received;
 }
@@ -329,4 +344,26 @@ void Ublox6_GetLastData(uBlox6_GPSData *gpsEntry) {
   //usart_disable_rx_interrupt(GPS_USART);
   memcpy(gpsEntry, &_current_GPSData, sizeof(uBlox6_GPSData));
   //usart_enable_rx_interrupt(GPS_USART);
+}
+
+/**
+ * @brief Ublox6_Poll
+ * @param msgClass
+ * @param msgID
+ */
+void Ublox6_Poll(uint8_t msgClass, uint8_t msgID) {
+    uBlox6_Checksum crc;
+    Ublox6_CalculateChecksum(&crc,msgClass,msgID,NULL,0);
+    // Send header
+    usart_send_blocking(GPS_USART,UBLOX6_UBX_SYNC_CH1);
+    usart_send_blocking(GPS_USART,UBLOX6_UBX_SYNC_CH2);
+    // Send message class and ID
+    usart_send_blocking(GPS_USART,msgClass);
+    usart_send_blocking(GPS_USART,msgID);
+    // Send payload size
+    usart_send_blocking(GPS_USART,0);
+    usart_send_blocking(GPS_USART,0);
+    // Send checksum
+    usart_send_blocking(GPS_USART,crc.ck_a);
+    usart_send_blocking(GPS_USART,crc.ck_b);
 }

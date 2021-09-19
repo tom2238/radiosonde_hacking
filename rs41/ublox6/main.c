@@ -88,9 +88,6 @@ int main(void) {
 
     // USART3 for serial print
     usart_setup();
-    // USART1 for GPS
-    gps_usart_setup(UBLOX6_UART_SPEED_DEFAULT);
-    delay(10);
     // Intialize ublox
     Ublox6_Init();
     // Set different leds state
@@ -127,7 +124,7 @@ int main(void) {
 
         Ublox6_GetLastData(&gpsData);
 
-        console_print_int(gpsData.year);
+        /*console_print_int(gpsData.year);
         console_puts(".");
         console_print_int(gpsData.month);
         console_puts(".");
@@ -152,7 +149,7 @@ int main(void) {
         console_print_int(gpsData.gSpeed);
         console_puts(", S:");
         console_print_int(gpsData.speed);
-        console_puts("\n");
+        console_puts("\n");*/
 
         // New packet
         dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());

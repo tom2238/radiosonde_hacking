@@ -136,6 +136,14 @@ typedef struct {
     uint32_t reserved4;     // Always set to zero [- -]
 } uBlox6_CFGNAV5_Payload;
 
+// Navigation/Measurement Rate Settings
+#define UBLOX6_MSG_ID_CFGRATE 0x08
+typedef struct {
+    uint16_t measRate;      // Measurement Rate, GPS measurements are taken every measRate milliseconds [- ms]
+    uint16_t navRate;       // Navigation Rate, in number of measurement cycles. On u-blox 5 and u-blox 6, this parameter cannot be changed, and is always equals 1. [- cycles]
+    uint16_t timeRef;       // Alignment to reference time: 0 = UTC time, 1 = GPS time [- -]
+} uBlox6_CFGRATE_Payload;
+
 // UTC Time Solution
 #define UBLOX6_MSG_ID_NAVTIMEUTC 0x21
 typedef struct {
@@ -241,6 +249,18 @@ typedef struct {
     uint32_t reserved3;     // Reserved [- -]
 } uBlox6_NAVPVT_Payload;
 
+// Receiver Navigation Status
+#define UBLOX6_MSG_ID_NAVSTATUS 0x03
+typedef struct {
+    uint32_t iTOW;          // GPS Millisecond Time of Week [- ms]
+    uint8_t gpsFix;         // GPS Fix Type, this value does not qualify a fix asvalid and within the limits. See note on flag gpsFixOk below. [- -]
+    uint8_t flags;          // Navigation Status Flags, LSB = gpsFixOK - the only valid way of determining if a fix is actually OK. [- -]
+    uint8_t fixStat;        // Fix Status Information [- -]
+    uint8_t flags2;         // Power Save Mode State [- -]
+    uint32_t ttff;          // Time to first fix (millisecond time tag) [- -]
+    uint32_t msss;          // Milliseconds since Startup / Reset [- -]
+} uBlox6_NAVSTATUS_Payload;
+
 // UBX Checksum
 typedef struct {
     uint8_t ck_a;           // Checksum A
@@ -275,7 +295,9 @@ typedef union {
     uBlox6_NAVSOL_Payload navsol;
     uBlox6_NAVPOSLLH_Payload navposllh;
     uBlox6_NAVVELNED_Payload navvelned;
-    //uBlox6_NAVPVT_Payload navpvt;
+    uBlox6_NAVSTATUS_Payload navstatus;
+    // NAVPVT is unsupported on Ublox-G6010
+    uBlox6_NAVPVT_Payload navpvt;
     uBlox6_ACKACK_Payload ackack;
 } ublox6_PacketData;
 
@@ -305,8 +327,9 @@ typedef struct {
 
 // Functions
 // Public
-void Ublox6_Init(void);
+uint8_t Ublox6_Init(void);
 void Ublox6_HandleByte(uint8_t data);
 void Ublox6_GetLastData(uBlox6_GPSData *gpsEntry);
+void Ublox6_Poll(uint8_t msgClass, uint8_t msgID);
 
 #endif // UBLOX6_H
