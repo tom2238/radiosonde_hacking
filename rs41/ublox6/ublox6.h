@@ -323,7 +323,95 @@ typedef struct {
     uint32_t speed;         // Speed (3-D) [- cm/s]
     uint32_t gSpeed;        // Ground Speed (2-D) [- cm/s]
     int32_t heading;        // Heading of motion 2-D [1e-5 deg]
+    uint8_t ck_rec_a;
+    uint8_t ck_rec_b;
+    uint8_t ck_cal_a;
+    uint8_t ck_cal_b;
+    uint16_t pay_size;
 } uBlox6_GPSData;
+
+
+/* Decoder state */
+typedef enum {
+    UBX_DECODE_SYNC1 = 0,
+    UBX_DECODE_SYNC2,
+    UBX_DECODE_CLASS,
+    UBX_DECODE_ID,
+    UBX_DECODE_LENGTH1,
+    UBX_DECODE_LENGTH2,
+    UBX_DECODE_PAYLOAD,
+    UBX_DECODE_CHKSUM1,
+    UBX_DECODE_CHKSUM2,
+    UBX_DECODE_RTCM3
+} uBlox6_decode_state;
+
+/* Rx message state */
+typedef enum {
+    UBX_RXMSG_IGNORE = 0,
+    UBX_RXMSG_HANDLE,
+    UBX_RXMSG_DISABLE,
+    UBX_RXMSG_ERROR_LENGTH
+} uBlox6_rxmsg_state;
+
+/* ACK state */
+typedef enum {
+    UBX_ACK_IDLE = 0,
+    UBX_ACK_WAITING,
+    UBX_ACK_GOT_ACK,
+    UBX_ACK_GOT_NAK
+} uBlox6_ack_state;
+
+/* Rx ACK-ACK */
+typedef union {
+    uint16_t msg;
+    struct {
+        uint8_t clsID;
+        uint8_t msgID;
+    };
+} ubx_payload_rx_ack_ack_t;
+
+/* Rx ACK-NAK */
+typedef union {
+    uint16_t msg;
+    struct {
+        uint8_t clsID;
+        uint8_t msgID;
+    };
+} ubx_payload_rx_ack_nak_t;
+
+
+/* General message and payload buffer union */
+typedef union {
+    //ubx_payload_rx_nav_pvt_t          payload_rx_nav_pvt;
+    //ubx_payload_rx_nav_posllh_t       payload_rx_nav_posllh;
+    //ubx_payload_rx_nav_sol_t          payload_rx_nav_sol;
+    //ubx_payload_rx_nav_dop_t          payload_rx_nav_dop;
+    uBlox6_NAVTIMEUTC_Payload      payload_rx_nav_timeutc;
+    //ubx_payload_rx_nav_svinfo_part1_t payload_rx_nav_svinfo_part1;
+    //ubx_payload_rx_nav_svinfo_part2_t payload_rx_nav_svinfo_part2;
+    //ubx_payload_rx_nav_sat_part1_t    payload_rx_nav_sat_part1;
+    //ubx_payload_rx_nav_sat_part2_t    payload_rx_nav_sat_part2;
+    //ubx_payload_rx_nav_svin_t         payload_rx_nav_svin;
+    //ubx_payload_rx_nav_velned_t       payload_rx_nav_velned;
+    //ubx_payload_rx_mon_hw_ubx6_t      payload_rx_mon_hw_ubx6;
+    //ubx_payload_rx_mon_hw_ubx7_t      payload_rx_mon_hw_ubx7;
+    //ubx_payload_rx_mon_rf_t           payload_rx_mon_rf;
+    //ubx_payload_rx_mon_ver_part1_t    payload_rx_mon_ver_part1;
+    //ubx_payload_rx_mon_ver_part2_t    payload_rx_mon_ver_part2;
+    ubx_payload_rx_ack_ack_t          payload_rx_ack_ack;
+    ubx_payload_rx_ack_nak_t          payload_rx_ack_nak;
+    //ubx_payload_tx_cfg_prt_t          payload_tx_cfg_prt;
+    //ubx_payload_tx_cfg_rate_t         payload_tx_cfg_rate;
+    //ubx_payload_tx_cfg_nav5_t         payload_tx_cfg_nav5;
+    //ubx_payload_tx_cfg_rst_t          payload_tx_cfg_rst;
+    //ubx_payload_tx_cfg_sbas_t         payload_tx_cfg_sbas;
+    //ubx_payload_tx_cfg_msg_t          payload_tx_cfg_msg;
+    //ubx_payload_tx_cfg_tmode3_t       payload_tx_cfg_tmode3;
+    //ubx_payload_tx_cfg_cfg_t          payload_tx_cfg_cfg;
+    //ubx_payload_tx_cfg_valset_t       payload_tx_cfg_valset;
+    //ubx_payload_tx_cfg_gnss_t         payload_tx_cfg_gnss;
+    //ubx_payload_rx_nav_relposned_t    payload_rx_nav_relposned;
+} uBlox6_buf;
 
 // Functions
 // Public
@@ -331,5 +419,7 @@ uint8_t Ublox6_Init(void);
 void Ublox6_HandleByte(uint8_t data);
 void Ublox6_GetLastData(uBlox6_GPSData *gpsEntry);
 void Ublox6_Poll(uint8_t msgClass, uint8_t msgID);
+int Ublox6_HandleByte2(uint8_t data);
+int Ublox6_HandleByte3(uint8_t data);
 
 #endif // UBLOX6_H

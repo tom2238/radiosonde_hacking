@@ -124,7 +124,7 @@ int main(void) {
 
         Ublox6_GetLastData(&gpsData);
 
-        /*console_print_int(gpsData.year);
+        console_print_int(gpsData.year);
         console_puts(".");
         console_print_int(gpsData.month);
         console_puts(".");
@@ -135,7 +135,18 @@ int main(void) {
         console_print_int(gpsData.min);
         console_puts(":");
         console_print_int(gpsData.sec);
-        console_puts(", Fix:");
+        //console_puts(" CK_R");
+        //console_print_int(gpsData.ck_rec_a);
+        //console_puts(",");
+        //console_print_int(gpsData.ck_rec_b);
+        //console_puts(", CK_C");
+        //console_print_int(gpsData.ck_cal_a);
+        //console_puts(",");
+        //console_print_int(gpsData.ck_cal_b);
+        //console_puts(", PS");
+        //console_print_int(gpsData.pay_size);
+        console_puts("\n");
+        /*console_puts(", Fix:");
         console_print_int(gpsData.gpsFix);
         console_puts(", SVs:");
         console_print_int(gpsData.numSV);
@@ -182,7 +193,9 @@ void usart1_isr(void) {
     if (((USART_CR1(GPS_USART) & USART_CR1_RXNEIE) != 0) && ((USART_SR(GPS_USART) & USART_SR_RXNE) != 0)) {
         uint16_t c = usart_recv(GPS_USART);
         //console_putc(c);
-        Ublox6_HandleByte((uint8_t)c);
+        //Ublox6_HandleByte((uint8_t)c);
+        //Ublox6_HandleByte2((uint8_t)c);
+        Ublox6_HandleByte3((uint8_t)c);
     }
 }
 
