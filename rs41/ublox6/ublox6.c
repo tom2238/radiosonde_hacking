@@ -31,13 +31,6 @@ static void Ublox6_SendPayload(uint8_t msgClass, uint8_t msgID, uint8_t *payload
 static uint8_t Ublox6_SendPayloadAndWait(uint8_t msgClass, uint8_t msgID, uint8_t *payload, uint16_t size);
 static inline void Ublox6_HandlePacket(uBlox6_Packet *packet);
 static uint8_t Ublox6_WaitForACK(void);
-// handle 2
-static int Ublox6_payloadRxDone(void);
-static int Ublox6_payloadRxInit(void);
-static void Ublox6_addByteToChecksum(const uint8_t b);
-static void Ublox6_decodeInit(void);
-static int Ublox6_payloadRxAdd(const uint8_t b);
-static int Ublox6_WaitForACK2(void);
 
 // Ack/Nack Messages: i.e. as replies to CFG Input Messages
 static volatile uint8_t _ack_received = 0;
@@ -45,19 +38,6 @@ static volatile uint8_t _nack_received = 0;
 
 // Current GPS data
 static uBlox6_GPSData _current_GPSData;
-
-// Handle 2 vars
-static uint8_t _rx_ck_a = 0;
-static uint8_t _rx_ck_b = 0;
-static uint8_t _rx_payload_length = 0;
-static uint8_t _rx_payload_index = 0;
-static uBlox6_decode_state _decode_state = UBX_DECODE_SYNC1;
-static uint16_t _rx_msg = 0;
-static uBlox6_rxmsg_state _rx_state = UBX_RXMSG_IGNORE;
-static uBlox6_ack_state _ack_state = UBX_ACK_WAITING;
-static uBlox6_buf _buf;
-static uint16_t _ack_waiting_msg = 0;
-static uint8_t _configured;
 
 /**
  * @brief Ublox6_CalculateChecksum
@@ -145,7 +125,6 @@ static uint8_t Ublox6_SendPayloadAndWait(uint8_t msgClass, uint8_t msgID, uint8_
  */
 uint8_t Ublox6_Init(void) {
     uint8_t success_error = 0;
-    _configured = 0;
     // USART1 for GPS, speed 38400 bds
     /*gps_usart_setup(UBLOX6_UART_SPEED_FAST);
     delay(50);
@@ -198,15 +177,22 @@ uint8_t Ublox6_Init(void) {
     }
 
     uBlox6_CFGMSG_Payload cfgmsg;           // Activate certain messages on each port
-    /*cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
     cfgmsg.msgID = UBLOX6_MSG_ID_NAVSOL;    // Message Identifier, NAV-SOL
     cfgmsg.rate = 1;                        // Send rate on current Target
     if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
         success_error++;
-    }*/
+    }
 
     cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
     cfgmsg.msgID = UBLOX6_MSG_ID_NAVTIMEUTC;// Message Identifier, NAV-TIMEUTC
+    cfgmsg.rate = 1;                        // Send rate on current Target
+    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+        success_error++;
+    }
+
+    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+    cfgmsg.msgID = UBLOX6_MSG_ID_NAVPOSLLH; // Message Identifier, NAV-POSLLH
     cfgmsg.rate = 1;                        // Send rate on current Target
     if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
         success_error++;
@@ -256,7 +242,6 @@ uint8_t Ublox6_Init(void) {
     if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGNAV5,(uint8_t*)&cfgnav5,sizeof(uBlox6_CFGNAV5_Payload))) {
         success_error++;
     }
-    _configured = 1;
     return success_error;
 }
 
@@ -446,7 +431,6 @@ int Ublox6_HandleByte3(uint8_t data) {
         incoming_payload_buffer[payload_index] = data;
         if(++payload_index >= head_rx.payloadSize) {
             decode_state = UBX_DECODE_CHKSUM1;
-            _current_GPSData.pay_size = head_rx.payloadSize;
             Ublox6_CalculateChecksum(&checksum_rx,head_rx.messageClass,head_rx.messageId,(const uint8_t*)incoming_payload_buffer,head_rx.payloadSize);
         }
         break;
@@ -457,9 +441,6 @@ int Ublox6_HandleByte3(uint8_t data) {
         } else {
             decode_state = UBX_DECODE_SYNC1;
         }
-        _current_GPSData.ck_cal_a = checksum_rx.ck_a;
-        _current_GPSData.ck_cal_b = checksum_rx.ck_b;
-        _current_GPSData.ck_rec_a = data;
         break;
     /* Expecting second checksum byte */
     case UBX_DECODE_CHKSUM2:
@@ -470,15 +451,26 @@ int Ublox6_HandleByte3(uint8_t data) {
             } else if (head_rx.messageClass == UBLOX6_CLASS_ID_ACK && head_rx.messageId == UBLOX6_MSG_ID_ACKNAK) {
                 _nack_received = 1;
             } else if (head_rx.messageClass == UBLOX6_CLASS_ID_NAV && head_rx.messageId == UBLOX6_MSG_ID_NAVTIMEUTC) {
-                uBlox6_NAVTIMEUTC_Payload *utc = (uBlox6_NAVTIMEUTC_Payload*)incoming_payload_buffer;
-                _current_GPSData.year = utc->year;
-                _current_GPSData.month = utc->month;
-                _current_GPSData.day = utc->day;
-                _current_GPSData.hour = utc->hour;
-                _current_GPSData.min = utc->min;
-                _current_GPSData.sec = utc->sec;
+                uBlox6_NAVTIMEUTC_Payload *navtimeutc = (uBlox6_NAVTIMEUTC_Payload*)incoming_payload_buffer;
+                _current_GPSData.year = navtimeutc->year;
+                _current_GPSData.month = navtimeutc->month;
+                _current_GPSData.day = navtimeutc->day;
+                _current_GPSData.hour = navtimeutc->hour;
+                _current_GPSData.min = navtimeutc->min;
+                _current_GPSData.sec = navtimeutc->sec;
+                console_putc('T');
+            } else if (head_rx.messageClass == UBLOX6_CLASS_ID_NAV && head_rx.messageId == UBLOX6_MSG_ID_NAVSOL) {
+                uBlox6_NAVSOL_Payload *navsol = (uBlox6_NAVSOL_Payload*)incoming_payload_buffer;
+                _current_GPSData.gpsFix = navsol->gpsFix;
+                _current_GPSData.numSV = navsol->numSV;
+                console_putc('S');
+            } else if (head_rx.messageClass == UBLOX6_CLASS_ID_NAV && head_rx.messageId == UBLOX6_MSG_ID_NAVPOSLLH) {
+                uBlox6_NAVPOSLLH_Payload *navposllh = (uBlox6_NAVPOSLLH_Payload*)incoming_payload_buffer;
+                _current_GPSData.lat = navposllh->lat;
+                _current_GPSData.lon = navposllh->lon;
+                _current_GPSData.hMSL = navposllh->hMSL;
+                console_putc('P');
             }
-            _current_GPSData.ck_rec_b = data;
         }
         break;
     default:
@@ -487,241 +479,3 @@ int Ublox6_HandleByte3(uint8_t data) {
     return 0;
 }
 
-int Ublox6_HandleByte2(uint8_t data) {
-    int ret = 0;
-    switch (_decode_state) {
-    /* Expecting Sync1 */
-    case UBX_DECODE_SYNC1:
-        if (data == UBLOX6_UBX_SYNC_CH1) {	// Sync1 found --> expecting Sync2
-            _decode_state = UBX_DECODE_SYNC2;
-        }
-        break;
-        /* Expecting Sync2 */
-    case UBX_DECODE_SYNC2:
-        if (data == UBLOX6_UBX_SYNC_CH2) {	// Sync2 found --> expecting Class
-            _decode_state = UBX_DECODE_CLASS;
-        } else {		// Sync1 not followed by Sync2: reset parser
-            _decode_state = UBX_DECODE_SYNC1;
-            Ublox6_decodeInit();
-        }
-        break;
-        /* Expecting Class */
-    case UBX_DECODE_CLASS:
-        Ublox6_addByteToChecksum(data);  // checksum is calculated for everything except Sync and Checksum bytes
-        _rx_msg = data;
-        _decode_state = UBX_DECODE_ID;
-        break;
-        /* Expecting ID */
-    case UBX_DECODE_ID:
-        Ublox6_addByteToChecksum(data);
-        _rx_msg |= data << 8;
-        _decode_state = UBX_DECODE_LENGTH1;
-        break;
-        /* Expecting first length byte */
-    case UBX_DECODE_LENGTH1:
-        Ublox6_addByteToChecksum(data);
-        _rx_payload_length = data;
-        _decode_state = UBX_DECODE_LENGTH2;
-        break;
-        /* Expecting second length byte */
-    case UBX_DECODE_LENGTH2:
-        Ublox6_addByteToChecksum(data);
-        _rx_payload_length |= data << 8;	// calculate payload size
-        if (Ublox6_payloadRxInit() != 0) {	// start payload reception
-            // payload will not be handled, discard message
-            Ublox6_decodeInit();
-        } else {
-            _decode_state = (_rx_payload_length > 0) ? UBX_DECODE_PAYLOAD : UBX_DECODE_CHKSUM1;
-        }
-        break;
-        /* Expecting payload */
-    case UBX_DECODE_PAYLOAD:
-        Ublox6_addByteToChecksum(data);
-        ret = Ublox6_payloadRxAdd(data);
-        /*switch (_rx_msg) {
-        case ((UBLOX6_CLASS_ID_NAV) | UBLOX6_MSG_ID_NAVSOL << 8):
-            //ret = payloadRxAddNavSat(b);	// add a NAV-SAT payload byte
-            break;
-        case ((UBLOX6_CLASS_ID_NAV) | UBLOX6_MSG_ID_NAVPOSLLH << 8):
-            //ret = payloadRxAddNavSvinfo(b);	// add a NAV-SVINFO payload byte
-            break;
-        case ((UBLOX6_CLASS_ID_NAV) | UBLOX6_MSG_ID_NAVTIMEUTC << 8):
-            //ret = payloadRxAddMonVer(b);	// add a MON-VER payload byte
-            break;
-        default:
-            //ret = payloadRxAdd(b);		// add a payload byte
-            break;
-        }*/
-
-        if (ret < 0) {
-            // payload not handled, discard message
-            Ublox6_decodeInit();
-        } else if (ret > 0) {
-            // payload complete, expecting checksum
-            _decode_state = UBX_DECODE_CHKSUM1;
-
-        } else {
-            // expecting more payload, stay in state UBX_DECODE_PAYLOAD
-        }
-        ret = 0;
-        break;
-        /* Expecting first checksum byte */
-    case UBX_DECODE_CHKSUM1:
-        if (_rx_ck_a != data) {
-            Ublox6_decodeInit();
-            //console_puts("C1");
-        } else {
-            _decode_state = UBX_DECODE_CHKSUM2;
-            //console_puts("CE");
-        }
-        break;
-        /* Expecting second checksum byte */
-    case UBX_DECODE_CHKSUM2:
-        if (_rx_ck_b != data) {
-            //UBX_DEBUG("ubx checksum err");
-            //console_puts("C2");
-        } else {
-            ret = Ublox6_payloadRxDone();	// finish payload processing
-        }
-        Ublox6_decodeInit();
-        break;
-    default:
-        break;
-    }
-    return ret;
-}
-
-// 0 = no message handled, 1 = message handled, 2 = sat info message handled
-static int Ublox6_payloadRxDone(void) {
-    int ret = 0;
-    //console_putc('D');
-    //console_print_int(_rx_msg);
-    //console_putc(',');
-    // return if no message handled
-    if (_rx_state != UBX_RXMSG_HANDLE) {
-        return ret;
-    }
-    // handle message
-
-    switch (_rx_msg) {
-    case ((UBLOX6_CLASS_ID_NAV) | UBLOX6_MSG_ID_NAVTIMEUTC << 8):
-        _current_GPSData.year = _buf.payload_rx_nav_timeutc.year;
-        _current_GPSData.month = _buf.payload_rx_nav_timeutc.month;
-        _current_GPSData.day = _buf.payload_rx_nav_timeutc.day;
-        _current_GPSData.hour = _buf.payload_rx_nav_timeutc.hour;
-        _current_GPSData.min = _buf.payload_rx_nav_timeutc.min;
-        _current_GPSData.sec = _buf.payload_rx_nav_timeutc.sec;
-        console_putc('T');
-        ret = 1;
-        break;
-    case ((UBLOX6_CLASS_ID_ACK) | UBLOX6_MSG_ID_ACKACK << 8):
-        if ((_ack_state == UBX_ACK_WAITING) && (_buf.payload_rx_ack_ack.msg == _ack_waiting_msg)) {
-            _ack_state = UBX_ACK_GOT_ACK;
-        }
-        ret = 1;
-        break;
-    case ((UBLOX6_CLASS_ID_ACK) | UBLOX6_MSG_ID_ACKNAK << 8):
-        if ((_ack_state == UBX_ACK_WAITING) && (_buf.payload_rx_ack_ack.msg == _ack_waiting_msg)) {
-            _ack_state = UBX_ACK_GOT_NAK;
-        }
-        ret = 1;
-        break;
-    default:
-        break;
-    }
-
-    return ret;
-}
-
-static int Ublox6_payloadRxInit(void) {
-    int ret = 0;
-    _rx_state = UBX_RXMSG_HANDLE; // handle by default
-    //console_putc('I');
-    //console_print_int(_rx_msg);
-    //console_putc(',');
-    switch (_rx_msg) {
-    case ((UBLOX6_CLASS_ID_NAV) | UBLOX6_MSG_ID_NAVTIMEUTC << 8):
-        if (_rx_payload_length != sizeof(uBlox6_NAVTIMEUTC_Payload)) {
-            _rx_state = UBX_RXMSG_ERROR_LENGTH;
-        } else if (!_configured) {
-            _rx_state = UBX_RXMSG_IGNORE;        // ignore if not _configured
-        }
-        break;
-    case ((UBLOX6_CLASS_ID_ACK) | UBLOX6_MSG_ID_ACKACK << 8):
-        if (_rx_payload_length != sizeof(ubx_payload_rx_ack_ack_t)) {
-            _rx_state = UBX_RXMSG_ERROR_LENGTH;
-        } else if (_configured) {
-            _rx_state = UBX_RXMSG_IGNORE;        // ignore if _configured
-        }
-        break;
-    case ((UBLOX6_CLASS_ID_ACK) | UBLOX6_MSG_ID_ACKNAK << 8):
-        if (_rx_payload_length != sizeof(ubx_payload_rx_ack_nak_t)) {
-            _rx_state = UBX_RXMSG_ERROR_LENGTH;
-        } else if (_configured) {
-            _rx_state = UBX_RXMSG_IGNORE;        // ignore if _configured
-        }
-        break;
-    default:
-        _rx_state = UBX_RXMSG_DISABLE;	// disable all other messages
-        break;
-    }
-    //console_putc('X');
-    //console_print_int(_rx_state);
-    switch (_rx_state) {
-    case UBX_RXMSG_HANDLE:	// handle message
-    case UBX_RXMSG_IGNORE:	// ignore message but don't report error
-        ret = 0;
-        break;
-    case UBX_RXMSG_ERROR_LENGTH:	// error: invalid length
-        ret = -1;	// return error, abort handling this message
-        break;
-    default:	// invalid message state
-        ret = -1;	// return error, abort handling this message
-        break;
-    }
-    //console_putc('R');
-    //console_print_int(ret);
-    return ret;
-}
-
-static void Ublox6_addByteToChecksum(const uint8_t b) {
-    _rx_ck_a = _rx_ck_a + b;
-    _rx_ck_b = _rx_ck_b + _rx_ck_a;
-}
-
-static void Ublox6_decodeInit(void) {
-    _decode_state = UBX_DECODE_SYNC1;
-    _rx_ck_a = 0;
-    _rx_ck_b = 0;
-    _rx_payload_length = 0;
-    _rx_payload_index = 0;
-}
-
-// -1 = error, 0 = ok, 1 = payload completed
-static int Ublox6_payloadRxAdd(const uint8_t b) {
-    int ret = 0;
-    uint8_t *p_buf = (uint8_t *)&_buf;
-    p_buf[_rx_payload_index] = b;
-    if (++_rx_payload_index >= _rx_payload_length) {
-        ret = 1;	// payload received completely
-    }
-    //console_putc(b);
-    return ret;
-}
-
-static int Ublox6_WaitForACK2(void) {
-    int ret = 1;
-    uint8_t timeout = 200;
-    _ack_state = UBX_ACK_WAITING;
-    while ((_ack_state == UBX_ACK_WAITING && timeout-- > 0)) {
-        delay(1);
-    }
-    if (_ack_state == UBX_ACK_GOT_ACK) {
-        ret = 0; // ACK received ok
-    } else {
-        _ack_state == UBX_ACK_GOT_NAK;
-    }
-    _ack_state = UBX_ACK_IDLE;
-
-    return ret;
-}

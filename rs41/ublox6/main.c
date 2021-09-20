@@ -145,15 +145,19 @@ int main(void) {
         //console_print_int(gpsData.ck_cal_b);
         //console_puts(", PS");
         //console_print_int(gpsData.pay_size);
-        console_puts("\n");
-        /*console_puts(", Fix:");
+
+        console_puts(", Fix:");
         console_print_int(gpsData.gpsFix);
         console_puts(", SVs:");
         console_print_int(gpsData.numSV);
+
         console_puts(", Lat:");
         console_print_int(gpsData.lat);
         console_puts(", Lon:");
         console_print_int(gpsData.lon);
+        console_puts(", Alt:");
+        console_print_int(gpsData.hMSL);
+        console_puts("\n"); /*
         console_puts(", H:");
         console_print_int(gpsData.heading);
         console_puts(", gS:");
@@ -194,7 +198,6 @@ void usart1_isr(void) {
         uint16_t c = usart_recv(GPS_USART);
         //console_putc(c);
         //Ublox6_HandleByte((uint8_t)c);
-        //Ublox6_HandleByte2((uint8_t)c);
         Ublox6_HandleByte3((uint8_t)c);
     }
 }
