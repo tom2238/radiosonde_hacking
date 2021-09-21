@@ -60,7 +60,12 @@
 void usart3_isr(void);
 void usart1_isr(void);
 static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps);
+static const char SondeID[8] = {'R','S','R','0','0','0','0','2'};
 
+/**
+ * @brief main Simply - It's main
+ * @return Never return
+ */
 int main(void) {
     // Setup all parts
     // Set correct clock
@@ -96,9 +101,12 @@ int main(void) {
     delay(500);
 
     // Frame init
-    Frame_Init(64,35,FRAME_MOD_NRZ);
+    // 62 max bytes for user data
+    // 55 bytes for user data
+    // Head(8) + User(55) + CRC(2) + ECC(0)
+    Frame_Init(62,55,FRAME_MOD_NRZ);
 
-    // Short packet (<= 64), 4800 baud, 3600 Hz deviation, 22 bytes packet size, 80 nibbles
+    // Short packet (<= 64), 4800 baud, 2400 Hz deviation, 57 bytes packet size, 80 nibbles
     Si4032_PacketMode(PACKET_TYPE_SHORT,4800,2400,Frame_GetUserLength()+Frame_GetCRCSize(),80);
 
     uBlox6_GPSData gpsData;
@@ -135,51 +143,41 @@ int main(void) {
         console_print_int(gpsData.min);
         console_puts(":");
         console_print_int(gpsData.sec);
-        //console_puts(" CK_R");
-        //console_print_int(gpsData.ck_rec_a);
-        //console_puts(",");
-        //console_print_int(gpsData.ck_rec_b);
-        //console_puts(", CK_C");
-        //console_print_int(gpsData.ck_cal_a);
-        //console_puts(",");
-        //console_print_int(gpsData.ck_cal_b);
-        //console_puts(", PS");
-        //console_print_int(gpsData.pay_size);
-
         console_puts(", Fix:");
         console_print_int(gpsData.gpsFix);
         console_puts(", SVs:");
         console_print_int(gpsData.numSV);
-
         console_puts(", Lat:");
         console_print_int(gpsData.lat);
         console_puts(", Lon:");
         console_print_int(gpsData.lon);
         console_puts(", Alt:");
         console_print_int(gpsData.hMSL);
-        console_puts("\n"); /*
         console_puts(", H:");
         console_print_int(gpsData.heading);
         console_puts(", gS:");
         console_print_int(gpsData.gSpeed);
         console_puts(", S:");
         console_print_int(gpsData.speed);
-        console_puts("\n");*/
+        console_puts("\n");
 
         // New packet
         dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
         // Calculate new frame data
         FrameCalculate(&dataframe,&gpsData);
-        // Calculate CRC16
+        // Calculate CRC16(2)
         Frame_CalculateCRC16(&dataframe);
         Frame_XOR(&dataframe,0); // XORing NRZ frame
-        // Preamble and header is added in Si4032
+        // Preamble(40) and header(8) is added in Si4032
         Si4032_WriteShortPacket((((uint8_t*)&dataframe.value) + Frame_GetHeadSize()), Frame_GetUserLength()+Frame_GetCRCSize());
 	}
 
 	return 0;
 }
 
+/**
+ * @brief usart3_isr XDATA USART interrupt routine
+ */
 void usart3_isr(void) {
     /* Check if we were called because of RXNE. */
     if (((USART_CR1(XDATA_USART) & USART_CR1_RXNEIE) != 0) && ((USART_SR(XDATA_USART) & USART_SR_RXNE) != 0)) {
@@ -192,17 +190,26 @@ void usart3_isr(void) {
     }
 }
 
+/**
+ * @brief usart1_isr GPS USART interrupt routine
+ */
 void usart1_isr(void) {
     /* Check if we were called because of RXNE. */
     if (((USART_CR1(GPS_USART) & USART_CR1_RXNEIE) != 0) && ((USART_SR(GPS_USART) & USART_SR_RXNE) != 0)) {
         uint16_t c = usart_recv(GPS_USART);
-        //console_putc(c);
-        //Ublox6_HandleByte((uint8_t)c);
-        Ublox6_HandleByte3((uint8_t)c);
+        //console_putc(c); // Debug info
+        Ublox6_HandleByte((uint8_t)c);
     }
 }
 
+/**
+ * @brief FrameCalculate Fill user data (with user length) into frame
+ * @param frame TX frame block
+ * @param gps Current GPS data
+ */
 static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps) {
+    // Frame user length is 55 bytes
+    static uint16_t frame_cnt = 0;
     // GPS TIME UTC
     frame->value[8] = (gps->year >> 24) & 0xFF;
     frame->value[9] = (gps->year >> 16) & 0xFF;
@@ -242,4 +249,28 @@ static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps) {
     frame->value[40] = (gps->heading >> 16) & 0xFF;
     frame->value[41] = (gps->heading >> 8) & 0xFF;
     frame->value[42] = (gps->heading >> 0) & 0xFF;
+    // GPS NAV SOL
+    frame->value[43] = (gps->iTOW >> 24) & 0xFF;
+    frame->value[44] = (gps->iTOW >> 16) & 0xFF;
+    frame->value[45] = (gps->iTOW >> 8) & 0xFF;
+    frame->value[46] = (gps->iTOW >> 0) & 0xFF;
+    frame->value[47] = (gps->week >> 8) & 0xFF;
+    frame->value[48] = (gps->week >> 0) & 0xFF;
+    frame->value[49] = (gps->pDOP >> 24) & 0xFF;
+    frame->value[50] = (gps->pDOP >> 16) & 0xFF;
+    frame->value[51] = (gps->pDOP >> 8) & 0xFF;
+    frame->value[52] = (gps->pDOP >> 0) & 0xFF;
+    // Frame count
+    frame->value[53] = (frame_cnt >> 8) & 0xFF;
+    frame->value[54] = (frame_cnt >> 0) & 0xFF;
+    // Sonde ID
+    frame->value[55] = SondeID[0];
+    frame->value[56] = SondeID[1];
+    frame->value[57] = SondeID[2];
+    frame->value[58] = SondeID[3];
+    frame->value[59] = SondeID[4];
+    frame->value[60] = SondeID[5];
+    frame->value[61] = SondeID[6];
+    frame->value[62] = SondeID[7];
+    frame_cnt++;
 }

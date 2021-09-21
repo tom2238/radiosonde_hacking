@@ -272,17 +272,17 @@ typedef struct {
 typedef struct {
     uint8_t clsID;          // Message Class [- -]
     uint8_t msgID;          // Message Identifier [- -]
-    uint8_t ck_a;
-    uint8_t ck_b;
+    uint8_t ck_a;           // Checksum A
+    uint8_t ck_b;           // Checksum B
 } uBlox6_ACKACK_Payload;
 
 // Ublox UBX header
 typedef struct  __attribute__((packed)){
     uint8_t sc1;            // 0xB5
     uint8_t sc2;            // 0x62
-    uint8_t messageClass;
-    uint8_t messageId;
-    uint16_t payloadSize;
+    uint8_t messageClass;   // Message Class [- -]
+    uint8_t messageId;      // Message Identifier [- -]
+    uint16_t payloadSize;   // Size of payload content
 } uBlox6_Header;
 
 // Handle all payloads
@@ -306,6 +306,11 @@ typedef struct __attribute__((packed)){
     ublox6_PacketData data;
 } uBlox6_Packet;
 
+// General packet for all payloads without header
+typedef struct __attribute__((packed)){
+    ublox6_PacketData data;
+} uBlox6_PacketPayload;
+
 // User GPS data
 typedef struct {
     uint16_t year;          // Year, range 1999..2099 (UTC) [- y]
@@ -322,28 +327,32 @@ typedef struct {
     uint32_t speed;         // Speed (3-D) [- cm/s]
     uint32_t gSpeed;        // Ground Speed (2-D) [- cm/s]
     int32_t heading;        // Heading of motion 2-D [1e-5 deg]
+    uint32_t iTOW;          // GPS Millisecond Time of Week [- ms]
+    int16_t week;           // GPS week (GPS time) [- -]
+    uint32_t pAcc;          // 3D Position Accuracy Estimate [- cm]
+    uint16_t pDOP;          // Position DOP [0.01 -]
+    uint32_t sAcc;          // Speed Accuracy Estimate [- cm/s]
 } uBlox6_GPSData;
 
 /* Decoder state */
 typedef enum {
-    UBX_DECODE_SYNC1 = 0,
-    UBX_DECODE_SYNC2,
-    UBX_DECODE_CLASS,
-    UBX_DECODE_ID,
-    UBX_DECODE_LENGTH1,
-    UBX_DECODE_LENGTH2,
-    UBX_DECODE_PAYLOAD,
-    UBX_DECODE_CHKSUM1,
-    UBX_DECODE_CHKSUM2,
-    UBX_DECODE_RTCM3
+    UBX_DECODE_SYNC1 = 0,   // Sync1 found
+    UBX_DECODE_SYNC2,       // Sync2 found
+    UBX_DECODE_CLASS,       // Message class state
+    UBX_DECODE_ID,          // Message ID state
+    UBX_DECODE_LENGTH1,     // First length byte
+    UBX_DECODE_LENGTH2,     // Second length byte
+    UBX_DECODE_PAYLOAD,     // Payload content
+    UBX_DECODE_CHKSUM1,     // First checksum byte
+    UBX_DECODE_CHKSUM2,     // Second checksum byte
+    UBX_DECODE_RTCM3        // RTCM3 decoding state, unused here
 } uBlox6_decode_state;
 
 // Functions
 // Public
 uint8_t Ublox6_Init(void);
-void Ublox6_HandleByte(uint8_t data);
+int Ublox6_HandleByte(uint8_t data);
 void Ublox6_GetLastData(uBlox6_GPSData *gpsEntry);
 void Ublox6_Poll(uint8_t msgClass, uint8_t msgID);
-int Ublox6_HandleByte3(uint8_t data);
 
 #endif // UBLOX6_H

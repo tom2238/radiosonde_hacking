@@ -29,7 +29,6 @@
 static void Ublox6_CalculateChecksum(uBlox6_Checksum *checksum, uint8_t msgClass, uint8_t msgId, const uint8_t *payload, uint16_t size);
 static void Ublox6_SendPayload(uint8_t msgClass, uint8_t msgID, uint8_t *payload, uint16_t size);
 static uint8_t Ublox6_SendPayloadAndWait(uint8_t msgClass, uint8_t msgID, uint8_t *payload, uint16_t size);
-static inline void Ublox6_HandlePacket(uBlox6_Packet *packet);
 static uint8_t Ublox6_WaitForACK(void);
 
 // Ack/Nack Messages: i.e. as replies to CFG Input Messages
@@ -44,7 +43,7 @@ static uBlox6_GPSData _current_GPSData;
  * @param checksum Checksum structure
  * @param msgClass UBX Message class
  * @param msgId UBX Message ID
- * @param payload Command payload content
+ * @param payload Payload content
  * @param size Size of payload
  */
 static void Ublox6_CalculateChecksum(uBlox6_Checksum *checksum, uint8_t msgClass, uint8_t msgId, const uint8_t *payload, uint16_t size) {
@@ -71,11 +70,11 @@ static void Ublox6_CalculateChecksum(uBlox6_Checksum *checksum, uint8_t msgClass
 }
 
 /**
- * @brief Ublox6_SendPayload
- * @param msgClass
- * @param msgID
- * @param payload
- * @param size
+ * @brief Ublox6_SendPayload Send payload to Ublox (usually config)
+ * @param msgClass UBX Message class
+ * @param msgID UBX Message ID
+ * @param payload Payload content
+ * @param size Size of payload
  */
 static void Ublox6_SendPayload(uint8_t msgClass, uint8_t msgID, uint8_t *payload, uint16_t size) {
     // Clear ACK/NACK status flags
@@ -104,11 +103,11 @@ static void Ublox6_SendPayload(uint8_t msgClass, uint8_t msgID, uint8_t *payload
 
 /**
  * @brief Ublox6_SendPayloadAndWait
- * @param msgClass
- * @param msgID
- * @param payload
- * @param size
- * @return
+ * @param msgClass UBX Message class
+ * @param msgID UBX Message ID
+ * @param payload Payload content
+ * @param size Size of payload
+ * @return Success info from WaitForACK
  */
 static uint8_t Ublox6_SendPayloadAndWait(uint8_t msgClass, uint8_t msgID, uint8_t *payload, uint16_t size) {
     uint8_t send_retries = 10;
@@ -121,7 +120,7 @@ static uint8_t Ublox6_SendPayloadAndWait(uint8_t msgClass, uint8_t msgID, uint8_
 }
 
 /**
- * @brief Ublox6_Init
+ * @brief Ublox6_Init Init Ublox GPS chip
  */
 uint8_t Ublox6_Init(void) {
     uint8_t success_error = 0;
@@ -198,20 +197,12 @@ uint8_t Ublox6_Init(void) {
         success_error++;
     }
 
-    /*cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
     cfgmsg.msgID = UBLOX6_MSG_ID_NAVVELNED; // Message Identifier, NAV-VELNED
     cfgmsg.rate = 1;                        // Send rate on current Target
     if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
         success_error++;
-    }*/
-
-    /*cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
-    cfgmsg.msgID = UBLOX6_MSG_ID_NAVPOSLLH; // Message Identifier, NAV-POSLLH
-    cfgmsg.rate = 1;                        // Send rate on current Target
-    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
-        success_error++;
-    }*/
-
+    }
 
     /*cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
     cfgmsg.msgID = UBLOX6_MSG_ID_NAVSTATUS; // Message Identifier, NAV-STATUS
@@ -246,93 +237,7 @@ uint8_t Ublox6_Init(void) {
 }
 
 /**
- * @brief Ublox6_HandleByte
- * @param data
- */
-void Ublox6_HandleByte(uint8_t data) {
-    static uint8_t sync = 0;
-    static uint8_t buffer_pos = 0;
-    static uint8_t incoming_packet_buffer[sizeof(uBlox6_Packet) + sizeof(uBlox6_Checksum)];
-    static uBlox6_Packet *incoming_packet = (uBlox6_Packet *)incoming_packet_buffer;
-    // Find 0xB5 0x62 header
-    if(!sync) {
-        if(!buffer_pos && data == UBLOX6_UBX_SYNC_CH1) {
-            buffer_pos = 1;
-            incoming_packet->header.sc1 = data;
-        } else if(buffer_pos == 1 && data == UBLOX6_UBX_SYNC_CH2) {
-            sync = 1;
-            buffer_pos = 2;
-            incoming_packet->header.sc2 = data;
-        } else {
-            buffer_pos = 0;
-        }
-    } else { // Header found
-        ((uint8_t *)incoming_packet)[buffer_pos] = data;
-        if (((size_t)buffer_pos >= sizeof(uBlox6_Header)-1) && ((size_t)buffer_pos-1 == ((size_t)incoming_packet->header.payloadSize + sizeof(uBlox6_Header) + sizeof(uBlox6_Checksum)))){
-            Ublox6_HandlePacket((uBlox6_Packet *)incoming_packet);
-            buffer_pos = 0;
-            sync = 0;
-        } else {
-            buffer_pos++;
-            if (buffer_pos >= sizeof(uBlox6_Packet) + sizeof(uBlox6_Checksum)) {
-                buffer_pos = 0;
-                sync = 0;
-            }
-        }
-    }
-}
-
-/**
- * @brief Ublox6_HandlePacket
- * @param packet
- */
-static inline void Ublox6_HandlePacket(uBlox6_Packet *packet) {
-    // Check checksum for received packet
-    uBlox6_Checksum ck_calculated;
-    Ublox6_CalculateChecksum(&ck_calculated,packet->header.messageClass,packet->header.messageId,(const uint8_t *)&packet->data,packet->header.payloadSize);
-    // Get checksum from received packet
-    uBlox6_Checksum *ck_received = (uBlox6_Checksum *)(((uint8_t*)&packet->data) + packet->header.payloadSize);
-    // Check if checksums is same
-    if (ck_calculated.ck_a == ck_received->ck_a && ck_calculated.ck_b == ck_received->ck_b) {
-        // If yes, check Class and ID to get correct data
-        if (packet->header.messageClass == UBLOX6_CLASS_ID_ACK && packet->header.messageId == UBLOX6_MSG_ID_ACKACK) {
-            _ack_received = 1;
-        } else if (packet->header.messageClass == UBLOX6_CLASS_ID_ACK && packet->header.messageId == UBLOX6_MSG_ID_ACKNAK) {
-            _nack_received = 1;
-        } /*else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVTIMEUTC) {
-            _current_GPSData.day = packet->data.navtimeutc.day;
-            _current_GPSData.hour = packet->data.navtimeutc.hour;
-            _current_GPSData.min = packet->data.navtimeutc.min;
-            _current_GPSData.month = packet->data.navtimeutc.month;
-            _current_GPSData.sec = packet->data.navtimeutc.sec;
-            _current_GPSData.year = packet->data.navtimeutc.year;
-            console_putc('T');
-
-        } else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVSOL) {
-            _current_GPSData.gpsFix = packet->data.navsol.gpsFix;
-            _current_GPSData.numSV = packet->data.navsol.numSV;
-            console_putc('S');
-
-        } else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVPOSLLH) {
-            _current_GPSData.lat = packet->data.navposllh.lat;
-            _current_GPSData.lon = packet->data.navposllh.lon;
-            _current_GPSData.hMSL = packet->data.navposllh.hMSL;
-            console_putc('P');
-
-        } else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVVELNED) {
-            _current_GPSData.gSpeed = packet->data.navvelned.gSpeed;
-            _current_GPSData.heading = packet->data.navvelned.heading;
-            _current_GPSData.speed = packet->data.navvelned.speed;
-            console_putc('V');
-        }*/ /*else if (packet->header.messageClass == UBLOX6_CLASS_ID_NAV && packet->header.messageId == UBLOX6_MSG_ID_NAVSTATUS) {
-            //_current_GPSData.gpsFix = packet->data.navstatus.gpsFix;
-            console_putc('U');
-        }*/
-    }
-}
-
-/**
- * @brief Ublox6_WaitForACK
+ * @brief Ublox6_WaitForACK Wait for ACK when CFG message was sended
  * @return
  */
 static uint8_t Ublox6_WaitForACK(void) {
@@ -344,8 +249,8 @@ static uint8_t Ublox6_WaitForACK(void) {
 }
 
 /**
- * @brief ublox_get_last_data
- * @param gpsEntry
+ * @brief Ublox6_GetLastData Get last GPS data from internal variable
+ * @param gpsEntry Pointer to GPSData struct where to save new data
  */
 void Ublox6_GetLastData(uBlox6_GPSData *gpsEntry) {
   //usart_disable_rx_interrupt(GPS_USART);
@@ -354,9 +259,9 @@ void Ublox6_GetLastData(uBlox6_GPSData *gpsEntry) {
 }
 
 /**
- * @brief Ublox6_Poll
- * @param msgClass
- * @param msgID
+ * @brief Ublox6_Poll Poll UBX message
+ * @param msgClass UBX Message class to poll
+ * @param msgID UBX Message ID to poll
  */
 void Ublox6_Poll(uint8_t msgClass, uint8_t msgID) {
     uBlox6_Checksum crc;
@@ -375,12 +280,20 @@ void Ublox6_Poll(uint8_t msgClass, uint8_t msgID) {
     usart_send_blocking(GPS_USART,crc.ck_b);
 }
 
-int Ublox6_HandleByte3(uint8_t data) {
+/**
+ * @brief Ublox6_HandleByte Handle one byte from GPS USART interrupt
+ * @param data One byte data from USART
+ * @return Zero
+ */
+int Ublox6_HandleByte(uint8_t data) {
     static uBlox6_decode_state decode_state = UBX_DECODE_SYNC1;
     static uBlox6_Header head_rx;
     static uBlox6_Checksum checksum_rx;
     static uint8_t payload_index;
-    static uint8_t incoming_payload_buffer[sizeof(uBlox6_Packet)];
+    static uint8_t incoming_payload_buffer[sizeof(uBlox6_PacketPayload)];
+    static uBlox6_PacketPayload *packet = (uBlox6_PacketPayload *)incoming_payload_buffer;
+    static uint16_t classID_rx;
+    // UBX protocol receiving state machine
     switch (decode_state) {
     /* Expecting Sync1 */
     case UBX_DECODE_SYNC1:
@@ -393,6 +306,7 @@ int Ublox6_HandleByte3(uint8_t data) {
             head_rx.messageId = 0x00;
             head_rx.payloadSize = 0x0000;
             payload_index = 0;
+            classID_rx = 0;
         }
         break;
     /* Expecting Sync2 */
@@ -410,11 +324,13 @@ int Ublox6_HandleByte3(uint8_t data) {
     case UBX_DECODE_CLASS:
         head_rx.messageClass = data;
         decode_state = UBX_DECODE_ID;
+        classID_rx = data;
         break;
     /* Expecting ID */
     case UBX_DECODE_ID:
         head_rx.messageId = data;
         decode_state = UBX_DECODE_LENGTH1;
+        classID_rx |= data << 8;
         break;
     /* Expecting first length byte */
     case UBX_DECODE_LENGTH1:
@@ -445,31 +361,49 @@ int Ublox6_HandleByte3(uint8_t data) {
     /* Expecting second checksum byte */
     case UBX_DECODE_CHKSUM2:
         if (checksum_rx.ck_b == data) {
+            // Back to find sync1 state
             decode_state = UBX_DECODE_SYNC1;
-            if (head_rx.messageClass == UBLOX6_CLASS_ID_ACK && head_rx.messageId == UBLOX6_MSG_ID_ACKACK) {
-                _ack_received = 1;
-            } else if (head_rx.messageClass == UBLOX6_CLASS_ID_ACK && head_rx.messageId == UBLOX6_MSG_ID_ACKNAK) {
+            // Select correct message class and message ID
+            switch (classID_rx) {
+            case ((UBLOX6_CLASS_ID_ACK) | UBLOX6_MSG_ID_ACKACK << 8):
+                 _ack_received = 1;
+                break;
+            case ((UBLOX6_CLASS_ID_ACK) | UBLOX6_MSG_ID_ACKNAK << 8):
                 _nack_received = 1;
-            } else if (head_rx.messageClass == UBLOX6_CLASS_ID_NAV && head_rx.messageId == UBLOX6_MSG_ID_NAVTIMEUTC) {
-                uBlox6_NAVTIMEUTC_Payload *navtimeutc = (uBlox6_NAVTIMEUTC_Payload*)incoming_payload_buffer;
-                _current_GPSData.year = navtimeutc->year;
-                _current_GPSData.month = navtimeutc->month;
-                _current_GPSData.day = navtimeutc->day;
-                _current_GPSData.hour = navtimeutc->hour;
-                _current_GPSData.min = navtimeutc->min;
-                _current_GPSData.sec = navtimeutc->sec;
-                console_putc('T');
-            } else if (head_rx.messageClass == UBLOX6_CLASS_ID_NAV && head_rx.messageId == UBLOX6_MSG_ID_NAVSOL) {
-                uBlox6_NAVSOL_Payload *navsol = (uBlox6_NAVSOL_Payload*)incoming_payload_buffer;
-                _current_GPSData.gpsFix = navsol->gpsFix;
-                _current_GPSData.numSV = navsol->numSV;
-                console_putc('S');
-            } else if (head_rx.messageClass == UBLOX6_CLASS_ID_NAV && head_rx.messageId == UBLOX6_MSG_ID_NAVPOSLLH) {
-                uBlox6_NAVPOSLLH_Payload *navposllh = (uBlox6_NAVPOSLLH_Payload*)incoming_payload_buffer;
-                _current_GPSData.lat = navposllh->lat;
-                _current_GPSData.lon = navposllh->lon;
-                _current_GPSData.hMSL = navposllh->hMSL;
-                console_putc('P');
+                break;
+            case ((UBLOX6_CLASS_ID_NAV) | UBLOX6_MSG_ID_NAVTIMEUTC << 8):
+                _current_GPSData.year = packet->data.navtimeutc.year;
+                _current_GPSData.month = packet->data.navtimeutc.month;
+                _current_GPSData.day = packet->data.navtimeutc.day;
+                _current_GPSData.hour = packet->data.navtimeutc.hour;
+                _current_GPSData.min = packet->data.navtimeutc.min;
+                _current_GPSData.sec = packet->data.navtimeutc.sec;
+                //console_putc('T'); // Debug info
+                break;
+            case ((UBLOX6_CLASS_ID_NAV) | UBLOX6_MSG_ID_NAVSOL << 8):
+                _current_GPSData.gpsFix = packet->data.navsol.gpsFix;
+                _current_GPSData.numSV = packet->data.navsol.numSV;
+                _current_GPSData.iTOW = packet->data.navsol.iTOW;
+                _current_GPSData.week = packet->data.navsol.week;
+                _current_GPSData.pAcc = packet->data.navsol.pAcc;
+                _current_GPSData.pDOP = packet->data.navsol.pDOP;
+                //console_putc('S'); // Debug info
+                break;
+            case ((UBLOX6_CLASS_ID_NAV) | UBLOX6_MSG_ID_NAVPOSLLH << 8):
+                _current_GPSData.lat = packet->data.navposllh.lat;
+                _current_GPSData.lon = packet->data.navposllh.lon;
+                _current_GPSData.hMSL = packet->data.navposllh.hMSL;
+                //console_putc('P'); // Debug info
+                break;
+            case ((UBLOX6_CLASS_ID_NAV) | UBLOX6_MSG_ID_NAVVELNED << 8):
+                _current_GPSData.speed = packet->data.navvelned.speed;
+                _current_GPSData.gSpeed = packet->data.navvelned.gSpeed;
+                _current_GPSData.heading = packet->data.navvelned.heading;
+                _current_GPSData.sAcc = packet->data.navvelned.sAcc;
+                //console_putc('V'); // Debug info
+                break;
+            default:
+                break;
             }
         }
         break;
@@ -478,4 +412,3 @@ int Ublox6_HandleByte3(uint8_t data) {
     }
     return 0;
 }
-
