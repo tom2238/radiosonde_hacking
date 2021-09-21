@@ -13,6 +13,13 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * u-blox 6 GPS/GLONASS/QZSS Receiver Description
+ * Including Protocol Specification V14
+ * GPS.G6-SW-12013, 60119,   5 Jul 2012
+ * https://www.u-blox.com/sites/default/files/products/documents/u-blox6-GPS-GLONASS-QZSS-V14_ReceiverDescrProtSpec_%28GPS.G6-SW-12013%29_Public.pdf
+ */
+
 // Global LibOpenCM3 libraries
 #include <libopencm3/stm32/usart.h>
 // STM32F100 libraries
