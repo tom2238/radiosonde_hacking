@@ -162,7 +162,7 @@ int main(void) {
         console_puts("\n");
 
         // New packet
-        Frame_NewData(&dataframe,Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
+        dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
         // Calculate new frame data
         FrameCalculate(&dataframe,&gpsData);
         // Calculate CRC16(2)

@@ -28,6 +28,8 @@ OBJS += $(LIBRARY_DIR)/frame.o
 OBJS += $(LIBRARY_DIR)/si4032.o
 # Add project custom objects
 OBJS += init.o 
+# Change maximum frame length in bytes
+DEFS += -DFRAME_LEN_MAX=70
 # libOpenCM dir
 OPENCM3_DIR = ../../libopencm3
 LDSCRIPT = ../../linker/stm32f100x8.ld

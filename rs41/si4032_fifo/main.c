@@ -102,7 +102,6 @@ int main(void) {
 
     // Frame infos
     unsigned int framecount = 0;
-    int i,j;
 
     // Frame init
     Frame_Init(64,20,FRAME_MOD_NRZ);
@@ -118,8 +117,6 @@ int main(void) {
 
     // Short packet (<= 64), 1200 baud, 4800 Hz deviation, 22 bytes packet size, 40 nibbles
     Si4032_PacketMode(PACKET_TYPE_SHORT,1200,4800,Frame_GetUserLength()+Frame_GetCRCSize(),40);
-    // Packet bytes to send
-    uint8_t packet_data[Frame_GetUserLength()+Frame_GetCRCSize()];
 
 	while (1) {
         /* Blink the LED on the board. */
@@ -180,14 +177,8 @@ int main(void) {
         dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
         // Calculate new frame data
         FrameCalculate(&dataframe,framecount,adc_vref,adc_val,adc_temperature);
-        j=0;
-        // Copy frame data + crc into packet, without header
-        for(i=Frame_GetHeadSize();i<Frame_GetUserLength()+Frame_GetHeadSize()+Frame_GetCRCSize();i++) {
-            packet_data[j] = dataframe.value[i];
-            j++;
-        }
         // Preamble and header is added in Si4032
-        Si4032_WriteShortPacket(packet_data,Frame_GetUserLength()+Frame_GetCRCSize());
+        Si4032_WriteShortPacket((((uint8_t*)&dataframe.value) + Frame_GetHeadSize()),Frame_GetUserLength()+Frame_GetCRCSize());
         // Increment frame counter
         framecount++;
 	}
