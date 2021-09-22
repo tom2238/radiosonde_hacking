@@ -69,7 +69,7 @@ uint8_t Frame_GetCoding(void);
 uint8_t Frame_GetCRCSize(void);
 uint8_t Frame_GetECCSize(void);
 uint8_t Frame_GetHeadSize(void);
-int Frame_NewData(FrameData *newframe, int frame_length, unsigned char modulation);
+FrameData Frame_NewData(int frame_length, unsigned char modulation);
 FrameHead Frame_NewHead(unsigned char modulation);
 void Frame_XOR(FrameData *frame, int start);
 uint16_t Frame_CalculateCRC16(FrameData *frame);
