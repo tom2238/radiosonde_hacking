@@ -101,6 +101,8 @@ int main(void) {
     delay(500);
 
     // Frame init
+    // FSK frame
+    FrameData dataframe;
     // 62 max bytes for user data
     // 55 bytes for user data
     // Head(8) + User(55) + CRC(2) + ECC(0)
@@ -112,8 +114,6 @@ int main(void) {
     uBlox6_GPSData gpsData;
     // Millis timer delay
     uint64_t millis_last = millis();
-    // FSK frame
-    static FrameData dataframe;
 
     console_puts("Init done!\n");
 
@@ -162,7 +162,7 @@ int main(void) {
         console_puts("\n");
 
         // New packet
-        dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
+        Frame_NewData(&dataframe,Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
         // Calculate new frame data
         FrameCalculate(&dataframe,&gpsData);
         // Calculate CRC16(2)

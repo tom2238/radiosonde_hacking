@@ -16,15 +16,23 @@
 #ifndef FRAME_DATA_H
 #define FRAME_DATA_H
 
+// Frame.h library config, Data and frame length
+// Maximum frame length, use less to save memory
+// Head length is always 8 bytes
+// Data length is variable, CRC length is always 2 bytes, ECC length is variable
+// If Manchester coding is used, usable packet length is (FRAME_LEN_MAX-HEAD_SIZE)/2
+#ifndef FRAME_LEN_MAX
+  // Some maximum value
+  // Use eg. -D FRAME_LEN_MAX=50 flag for GCC preprocessor to change maximum length
+  #define FRAME_LEN_MAX 512
+#endif
+
 // Frame and header
 #define FRAME_HEAD_OFS 0 // HEADOFS+HEADLEN <= 64
 #define FRAME_HEAD_LEN 56 // HEADOFS+HEADLEN mod 8 = 0, in bits
 #define FRAME_START ((FRAME_HEAD_OFS+FRAME_HEAD_LEN)/8)
 #define FRAME_HEAD_SIZE 8 // Head size in bytes
 
-// Data and frame length
-#define FRAME_LEN_MAX 512  // max framelen 150 , user data 140
-#define FRAME_USER_LEN 100  // Possible maximums: 251 for MAN, 502 for NRZ
 #define FRAME_LEN_MIN 18    // HEAD(8) + DATA(8) + ECC(0) + CRC(2)
 // Scrambler mask length
 #define FRAME_XORMASK_LEN 64
@@ -61,7 +69,7 @@ uint8_t Frame_GetCoding(void);
 uint8_t Frame_GetCRCSize(void);
 uint8_t Frame_GetECCSize(void);
 uint8_t Frame_GetHeadSize(void);
-FrameData Frame_NewData(int frame_length, unsigned char modulation);
+int Frame_NewData(FrameData *newframe, int frame_length, unsigned char modulation);
 FrameHead Frame_NewHead(unsigned char modulation);
 void Frame_XOR(FrameData *frame, int start);
 uint16_t Frame_CalculateCRC16(FrameData *frame);

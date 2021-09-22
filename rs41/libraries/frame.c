@@ -111,44 +111,45 @@ uint8_t Frame_GetHeadSize(void) {
  * @param modulation
  * @return
  */
-FrameData Frame_NewData(int frame_length, unsigned char modulation){
-  FrameData newframe;
-  newframe.modulation = modulation;
-  if(newframe.modulation == FRAME_MOD_NRZ) {
-      newframe.value[0] = 0x86;
-      newframe.value[1] = 0x35;
-      newframe.value[2] = 0xF4;
-      newframe.value[3] = 0x40;
-      newframe.value[4] = 0x93;
-      newframe.value[5] = 0xDF;
-      newframe.value[6] = 0x1A;
-      newframe.value[7] = 0x60;
-  } else if (newframe.modulation == FRAME_MOD_MAN) {
-      newframe.value[0] = 0x9A;
-      newframe.value[1] = 0x99;
-      newframe.value[2] = 0x99;
-      newframe.value[3] = 0x99;
-      newframe.value[4] = 0xA9;
-      newframe.value[5] = 0x6D;
-      newframe.value[6] = 0x55;
-      newframe.value[7] = 0x55;
+int Frame_NewData(FrameData *newframe, int frame_length, unsigned char modulation) {
+  //FrameData newframe;
+  newframe->modulation = modulation;
+  if(newframe->modulation == FRAME_MOD_NRZ) {
+      newframe->value[0] = 0x86;
+      newframe->value[1] = 0x35;
+      newframe->value[2] = 0xF4;
+      newframe->value[3] = 0x40;
+      newframe->value[4] = 0x93;
+      newframe->value[5] = 0xDF;
+      newframe->value[6] = 0x1A;
+      newframe->value[7] = 0x60;
+  } else if (newframe->modulation == FRAME_MOD_MAN) {
+      newframe->value[0] = 0x9A;
+      newframe->value[1] = 0x99;
+      newframe->value[2] = 0x99;
+      newframe->value[3] = 0x99;
+      newframe->value[4] = 0xA9;
+      newframe->value[5] = 0x6D;
+      newframe->value[6] = 0x55;
+      newframe->value[7] = 0x55;
   } else {
-      newframe.value[0] = 0x00;
-      newframe.value[1] = 0x00;
-      newframe.value[2] = 0x00;
-      newframe.value[3] = 0x00;
-      newframe.value[4] = 0x00;
-      newframe.value[5] = 0x00;
-      newframe.value[6] = 0x00;
-      newframe.value[7] = 0x00;
+      newframe->value[0] = 0x00;
+      newframe->value[1] = 0x00;
+      newframe->value[2] = 0x00;
+      newframe->value[3] = 0x00;
+      newframe->value[4] = 0x00;
+      newframe->value[5] = 0x00;
+      newframe->value[6] = 0x00;
+      newframe->value[7] = 0x00;
   }
-  newframe.length = frame_length;
+  newframe->length = frame_length;
 
   int i;
-  for(i=8;i<newframe.length;i++) {
-    newframe.value[i] = 0;
+  for(i=FRAME_HEAD_SIZE;i<newframe->length;i++) {
+    newframe->value[i] = 0;
   }
-  return newframe;
+  //return newframe;
+  return 0;
 }
 
 /**
@@ -244,8 +245,8 @@ int Frame_ManchesterEncode(FrameData *frame, int start) {
   uint8_t ManByte;
   uint8_t byte;
   uint8_t frame_bits[8];
-  FrameData ManEncode = Frame_NewData(frame->length*2, FRAME_MOD_MAN);
-  //printf("Manchester frame len: %d\n",ManEncode.length);
+  FrameData ManEncode;
+  Frame_NewData(&ManEncode,frame->length*2, FRAME_MOD_MAN);
   for(i=start;i<frame->length;i++) {
     byte = frame->value[i];
     for(j=0;j<8;j++) {
@@ -276,7 +277,6 @@ int Frame_ManchesterEncode(FrameData *frame, int start) {
   for(i=0;i<frame->length;i++){
     frame->value[i] = ManEncode.value[i];
   }
-
   return 0;
 }
 
