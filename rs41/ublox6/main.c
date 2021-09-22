@@ -45,10 +45,12 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/usart.h>
+#include <libopencm3/stm32/iwdg.h>
 // STM32F100 libraries
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
 #include <libopencm3/stm32/f1/usart.h>
+#include <libopencm3/stm32/f1/iwdg.h>
 // Another libraries
 #include <stdint.h>
 #include "init.h"
@@ -70,6 +72,8 @@ int main(void) {
     // Setup all parts
     // Set correct clock
     clock_setup();
+    // Watchdog if MCU freeze
+    watchdog_setup();
     // LEDs GPIO
     gpio_setup();
     // Systick for delay function
@@ -85,12 +89,14 @@ int main(void) {
     Si4032_Init2();
 
     gpio_clear(LED_RED_GPIO,LED_RED_PIN);
-    delay(500);
+    delay(250);
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
-    delay(500);
+    delay(250);
     gpio_clear(LED_RED_GPIO,LED_RED_PIN);
-    delay(500);
+    delay(250);
 
+    // Clear watchdog timer
+    iwdg_reset();
     // USART3 for serial print
     usart_setup();
     // Intialize ublox
@@ -170,6 +176,8 @@ int main(void) {
         Frame_XOR(&dataframe,0); // XORing NRZ frame
         // Preamble(40) and header(8) is added in Si4032
         Si4032_WriteShortPacket((((uint8_t*)&dataframe.value) + Frame_GetHeadSize()), Frame_GetUserLength()+Frame_GetCRCSize());
+        // Clear watchdog timer
+        iwdg_reset();
 	}
 
 	return 0;

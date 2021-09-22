@@ -21,11 +21,13 @@
 #include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/stm32/spi.h>
+#include <libopencm3/stm32/iwdg.h>
 // STM32F100 libraries
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
 #include <libopencm3/stm32/f1/usart.h>
 #include <libopencm3/stm32/f1/spi.h>
+#include <libopencm3/stm32/f1/iwdg.h>
 // Another libraries
 #include <stdint.h>
 #include "init.h"
@@ -137,6 +139,13 @@ void systick_setup(void) {
     systick_interrupt_enable();
     // Enable the system tick counter
     systick_counter_enable();
+}
+
+void watchdog_setup(void) {
+    // Set period
+    iwdg_set_period_ms(5000);
+    // Start watchdog timer;
+    iwdg_start();
 }
 
 // Get the current value of the millis counter
