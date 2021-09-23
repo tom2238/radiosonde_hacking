@@ -78,6 +78,7 @@ int main(void) {
     gpio_setup();
     // Systick for delay function
     systick_setup();
+
     // SPI config
     spi_setup();
     // Wait at least 15ms before any initialization SPI commands are sent to the radio
@@ -99,8 +100,26 @@ int main(void) {
     iwdg_reset();
     // USART3 for serial print
     usart_setup();
-    // Intialize ublox
-    Ublox6_Init();
+
+    // Initialize Ublox
+    // Set 38400 baud rate UART speed
+    gps_usart_setup(UBLOX6_UART_SPEED_FAST);
+    delay(10);
+    // Reset Ublox
+    Ublox6_Init(UBLOX6_INIT_RESET);
+    // Set 9600 baud rate UART speed
+    gps_usart_setup(UBLOX6_UART_SPEED_DEFAULT);
+    delay(10);
+    // Reset Ublox
+    Ublox6_Init(UBLOX6_INIT_RESET);
+    // Configure Ublox UART
+    Ublox6_Init(UBLOX6_INIT_PROTOCOL);
+    // Set 38400 baud rate UART speed
+    gps_usart_setup(UBLOX6_UART_SPEED_FAST);
+    delay(10);
+    // Confgure all other Ublox settings
+    Ublox6_Init(UBLOX6_INIT_ALL);
+
     // Set different leds state
     gpio_set(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_clear(LED_RED_GPIO,LED_RED_PIN);

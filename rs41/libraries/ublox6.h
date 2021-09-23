@@ -348,9 +348,16 @@ typedef enum {
     UBX_DECODE_RTCM3        // RTCM3 decoding state, unused here
 } uBlox6_decode_state;
 
+/* Initialization state */
+typedef enum {
+    UBLOX6_INIT_RESET = 0,
+    UBLOX6_INIT_PROTOCOL,
+    UBLOX6_INIT_ALL
+} uBlox6_init_state;
+
 // Functions
 // Public
-uint8_t Ublox6_Init(void);
+uint8_t Ublox6_Init(uBlox6_init_state init_state);
 int Ublox6_HandleByte(uint8_t data);
 void Ublox6_GetLastData(uBlox6_GPSData *gpsEntry);
 void Ublox6_Poll(uint8_t msgClass, uint8_t msgID);

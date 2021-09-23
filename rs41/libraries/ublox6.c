@@ -29,7 +29,6 @@
 #include <stddef.h>
 #include <string.h>
 #include "ublox6.h"
-#include "init.h"
 #include "utils.h"
 
 // Private
@@ -129,116 +128,110 @@ static uint8_t Ublox6_SendPayloadAndWait(uint8_t msgClass, uint8_t msgID, uint8_
 /**
  * @brief Ublox6_Init Init Ublox GPS chip
  */
-uint8_t Ublox6_Init(void) {
+uint8_t Ublox6_Init(uBlox6_init_state init_state) {
     uint8_t success_error = 0;
-    // USART1 for GPS, speed 38400 bds
-    /*gps_usart_setup(UBLOX6_UART_SPEED_FAST);
-    delay(50);
-    */
-    uBlox6_CFGRST_Payload cfgrst;       // Reset
-    cfgrst.navBbrMask = 0xFFFF;         // 0xFFFF Coldstart
-    cfgrst.resetMode = 0x01;            // 0x01 - Controlled Software reset
-    cfgrst.reserved1 = 0x00;            // Reserved
-    /*Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRST,(uint8_t*)&cfgrst,sizeof(uBlox6_CFGRST_Payload));
-    delay(250);
-    */
-    // USART1 for GPS, speed 9600 bds
-    gps_usart_setup(UBLOX6_UART_SPEED_DEFAULT);
-    delay(50);
+    // Initialization state
+    switch (init_state) {
+    case UBLOX6_INIT_RESET:;
+        // Reset
+        uBlox6_CFGRST_Payload cfgrst;       // Reset
+        cfgrst.navBbrMask = 0xFFFF;         // 0xFFFF Coldstart
+        cfgrst.resetMode = 0x01;            // 0x01 - Controlled Software reset
+        cfgrst.reserved1 = 0x00;            // Reserved
+        Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRST,(uint8_t*)&cfgrst,sizeof(uBlox6_CFGRST_Payload));
+        delay(250);
+        break;
+    case UBLOX6_INIT_PROTOCOL:;
+        uBlox6_CFGPRT_Payload cfgprt;       // Preferred protocol(s) needs to be enabled on a port
+        cfgprt.portID = 1;                  // Port Identifier Number,  1 = UART1
+        cfgprt.reserved0 = 0;               // Reserved
+        cfgprt.txReady = 0;                 // TX ready PIN configuration, TX ready feature disabled
+        cfgprt.mode = 0b00100011000000;     // A bit mask describing the UART mode, Character Length = 8bit, No Parity, Number of Stop Bits = 1 Stop Bit
+        cfgprt.baudRate = UBLOX6_UART_SPEED_FAST;   // 38400 Bit/s
+        cfgprt.inProtoMask = 1;             // A mask describing which input protocols are active. 1 = UBX enable
+        cfgprt.outProtoMask = 1;            // A mask describing which output protocols are active. 1 = UBX enable
+        cfgprt.reserved4 = 0;               // Always set to zero
+        cfgprt.reserved5 = 0;               // Always set to zero
+        Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGPRT,(uint8_t*)&cfgprt,sizeof(uBlox6_CFGPRT_Payload));
+        delay(50);
+        break;
+    case UBLOX6_INIT_ALL:;
+        ublox6_CFGRXM_Payload cfgrxm;
+        cfgrxm.lpMode = 4;                  // Low Power Mode, 4 = Continuous Mode
+        cfgrxm.reserved1 = 8;               // Always set to 8
+        if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRXM,(uint8_t*)&cfgrxm,sizeof(ublox6_CFGRXM_Payload))) {
+            success_error++;
+        }
 
-    // Reset
-    Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRST,(uint8_t*)&cfgrst,sizeof(uBlox6_CFGRST_Payload));
-    delay(250);
+        uBlox6_CFGRATE_Payload cfgrate;
+        cfgrate.measRate = 1000;            // Measurement Rate, 1000 ms
+        cfgrate.navRate = 1;                // Navigation Rate, in number of measurementcycles. This parameter cannot be changed, andmust be set to 1.
+        cfgrate.timeRef = 0;                // Alignment to reference time: 0 = UTC
+        if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRATE,(uint8_t*)&cfgrate,sizeof(uBlox6_CFGRATE_Payload))) {
+            success_error++;
+        }
 
-    uBlox6_CFGPRT_Payload cfgprt;       // Preferred protocol(s) needs to be enabled on a port
-    cfgprt.portID = 1;                  // Port Identifier Number,  1 = UART1
-    cfgprt.reserved0 = 0;               // Reserved
-    cfgprt.txReady = 0;                 // TX ready PIN configuration, TX ready feature disabled
-    cfgprt.mode = 0b00100011000000;     // A bit mask describing the UART mode, Character Length = 8bit, No Parity, Number of Stop Bits = 1 Stop Bit
-    cfgprt.baudRate = UBLOX6_UART_SPEED_FAST;   // 38400 Bit/s
-    cfgprt.inProtoMask = 1;             // A mask describing which input protocols are active. 1 = UBX enable
-    cfgprt.outProtoMask = 1;            // A mask describing which output protocols are active. 1 = UBX enable
-    cfgprt.reserved4 = 0;               // Always set to zero
-    cfgprt.reserved5 = 0;               // Always set to zero
-    Ublox6_SendPayload(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGPRT,(uint8_t*)&cfgprt,sizeof(uBlox6_CFGPRT_Payload));
-    delay(50);
+        uBlox6_CFGMSG_Payload cfgmsg;           // Activate certain messages on each port
+        cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+        cfgmsg.msgID = UBLOX6_MSG_ID_NAVSOL;    // Message Identifier, NAV-SOL
+        cfgmsg.rate = 1;                        // Send rate on current Target
+        if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+            success_error++;
+        }
 
-    // USART1 for GPS, speed 38400 bds
-    gps_usart_setup(UBLOX6_UART_SPEED_FAST);
-    delay(50);
+        cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+        cfgmsg.msgID = UBLOX6_MSG_ID_NAVTIMEUTC;// Message Identifier, NAV-TIMEUTC
+        cfgmsg.rate = 1;                        // Send rate on current Target
+        if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+            success_error++;
+        }
 
-    ublox6_CFGRXM_Payload cfgrxm;
-    cfgrxm.lpMode = 4;                  // Low Power Mode, 4 = Continuous Mode
-    cfgrxm.reserved1 = 8;               // Always set to 8
-    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRXM,(uint8_t*)&cfgrxm,sizeof(ublox6_CFGRXM_Payload))) {
-        success_error++;
-    }
+        cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+        cfgmsg.msgID = UBLOX6_MSG_ID_NAVPOSLLH; // Message Identifier, NAV-POSLLH
+        cfgmsg.rate = 1;                        // Send rate on current Target
+        if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+            success_error++;
+        }
 
-    uBlox6_CFGRATE_Payload cfgrate;
-    cfgrate.measRate = 1000;            // Measurement Rate, 1000 ms
-    cfgrate.navRate = 1;                // Navigation Rate, in number of measurementcycles. This parameter cannot be changed, andmust be set to 1.
-    cfgrate.timeRef = 0;                // Alignment to reference time: 0 = UTC
-    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGRATE,(uint8_t*)&cfgrate,sizeof(uBlox6_CFGRATE_Payload))) {
-        success_error++;
-    }
+        cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+        cfgmsg.msgID = UBLOX6_MSG_ID_NAVVELNED; // Message Identifier, NAV-VELNED
+        cfgmsg.rate = 1;                        // Send rate on current Target
+        if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+            success_error++;
+        }
 
-    uBlox6_CFGMSG_Payload cfgmsg;           // Activate certain messages on each port
-    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
-    cfgmsg.msgID = UBLOX6_MSG_ID_NAVSOL;    // Message Identifier, NAV-SOL
-    cfgmsg.rate = 1;                        // Send rate on current Target
-    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
-        success_error++;
-    }
+        /*cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
+        cfgmsg.msgID = UBLOX6_MSG_ID_NAVSTATUS; // Message Identifier, NAV-STATUS
+        cfgmsg.rate = 2;                        // Send rate on current Target
+        if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
+            success_error++;
+        }*/
 
-    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
-    cfgmsg.msgID = UBLOX6_MSG_ID_NAVTIMEUTC;// Message Identifier, NAV-TIMEUTC
-    cfgmsg.rate = 1;                        // Send rate on current Target
-    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
-        success_error++;
-    }
-
-    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
-    cfgmsg.msgID = UBLOX6_MSG_ID_NAVPOSLLH; // Message Identifier, NAV-POSLLH
-    cfgmsg.rate = 1;                        // Send rate on current Target
-    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
-        success_error++;
-    }
-
-    cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
-    cfgmsg.msgID = UBLOX6_MSG_ID_NAVVELNED; // Message Identifier, NAV-VELNED
-    cfgmsg.rate = 1;                        // Send rate on current Target
-    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
-        success_error++;
-    }
-
-    /*cfgmsg.msgClass = UBLOX6_CLASS_ID_NAV;  // Message Class
-    cfgmsg.msgID = UBLOX6_MSG_ID_NAVSTATUS; // Message Identifier, NAV-STATUS
-    cfgmsg.rate = 2;                        // Send rate on current Target
-    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGMSG,(uint8_t*)&cfgmsg,sizeof(uBlox6_CFGMSG_Payload))) {
-        success_error++;
-    }*/
-
-    uBlox6_CFGNAV5_Payload cfgnav5;     // Navigation Engine Settings
-    cfgnav5.mask = 0b00000001111111111; // Apply dynamic model settings, Apply minimum elevation settings, Apply fix mode settings, Apply position mask settings,  Apply time mask settings, Apply static hold settings, Apply DGPS settings.
-    cfgnav5.dynModel = 6;               // Dynamic Platform model, 6 = Airborne with <1g Acceleration, 0 = Portable
-    cfgnav5.fixMode = 2;                // Position Fixing Mode, 3 = Fix 3D only
-    cfgnav5.fixedAlt = 0;               // Fixed altitude (mean sea level) for 2D fix mode, 0*0.01 meters
-    cfgnav5.fixedAltVar = 10000;        // Fixed altitude variance for 2D mode. 10000*0.0001 meters^2
-    cfgnav5.minElev = 5;                // Minimum Elevation for a GNSS satellite to be used in NAV, 5 deg
-    cfgnav5.drLimit = 0;                // Reserved
-    cfgnav5.pDop = 25;                  // Position DOP Mask to use, 0.1*25
-    cfgnav5.tDop = 25;                  // Time DOP Mask to use, 0.1*25
-    cfgnav5.pAcc = 100;                 // Position Accuracy Mask, 100 meters
-    cfgnav5.tAcc = 300;                 // Time Accuracy Mask, 300 meters
-    cfgnav5.staticHoldThresh = 0;       // Static hold threshold, 0 cm/s
-    cfgnav5.dgpsTimeOut = 2;            // DGPS timeout. 2 seconds
-    cfgnav5.cnoThreshNumSVs = 0;        // Number of satellites required to have C/N0 above cnoThresh for a valid fix. 0
-    cfgnav5.cnoThresh = 0;              // C/N0 threshold for a valid fix. 0 dBHz
-    cfgnav5.reserved2 = 0;              // Always set to zero
-    cfgnav5.reserved3 = 0;              // Always set to zero
-    cfgnav5.reserved4 = 0;              // Always set to zero
-    if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGNAV5,(uint8_t*)&cfgnav5,sizeof(uBlox6_CFGNAV5_Payload))) {
-        success_error++;
+        uBlox6_CFGNAV5_Payload cfgnav5;     // Navigation Engine Settings
+        cfgnav5.mask = 0b00000001111111111; // Apply dynamic model settings, Apply minimum elevation settings, Apply fix mode settings, Apply position mask settings,  Apply time mask settings, Apply static hold settings, Apply DGPS settings.
+        cfgnav5.dynModel = 6;               // Dynamic Platform model, 6 = Airborne with <1g Acceleration, 0 = Portable
+        cfgnav5.fixMode = 2;                // Position Fixing Mode, 3 = Fix 3D only
+        cfgnav5.fixedAlt = 0;               // Fixed altitude (mean sea level) for 2D fix mode, 0*0.01 meters
+        cfgnav5.fixedAltVar = 10000;        // Fixed altitude variance for 2D mode. 10000*0.0001 meters^2
+        cfgnav5.minElev = 5;                // Minimum Elevation for a GNSS satellite to be used in NAV, 5 deg
+        cfgnav5.drLimit = 0;                // Reserved
+        cfgnav5.pDop = 25;                  // Position DOP Mask to use, 0.1*25
+        cfgnav5.tDop = 25;                  // Time DOP Mask to use, 0.1*25
+        cfgnav5.pAcc = 100;                 // Position Accuracy Mask, 100 meters
+        cfgnav5.tAcc = 300;                 // Time Accuracy Mask, 300 meters
+        cfgnav5.staticHoldThresh = 0;       // Static hold threshold, 0 cm/s
+        cfgnav5.dgpsTimeOut = 2;            // DGPS timeout. 2 seconds
+        cfgnav5.cnoThreshNumSVs = 0;        // Number of satellites required to have C/N0 above cnoThresh for a valid fix. 0
+        cfgnav5.cnoThresh = 0;              // C/N0 threshold for a valid fix. 0 dBHz
+        cfgnav5.reserved2 = 0;              // Always set to zero
+        cfgnav5.reserved3 = 0;              // Always set to zero
+        cfgnav5.reserved4 = 0;              // Always set to zero
+        if(!Ublox6_SendPayloadAndWait(UBLOX6_CLASS_ID_CFG,UBLOX6_MSG_ID_CFGNAV5,(uint8_t*)&cfgnav5,sizeof(uBlox6_CFGNAV5_Payload))) {
+            success_error++;
+        }
+        break;
+    default:
+        break;
     }
     return success_error;
 }

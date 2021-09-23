@@ -26,8 +26,9 @@ DEFS += -I$(LIBRARY_DIR)
 OBJS += $(LIBRARY_DIR)/utils.o
 OBJS += $(LIBRARY_DIR)/frame.o
 OBJS += $(LIBRARY_DIR)/si4032.o
+OBJS += $(LIBRARY_DIR)/ublox6.o
 # Add project custom objects
-OBJS += init.o ublox6.o
+OBJS += init.o
 # Change maximum frame length in bytes
 DEFS += -DFRAME_LEN_MAX=70
 # libOpenCM dir
