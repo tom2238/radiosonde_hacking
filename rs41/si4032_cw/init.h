@@ -34,8 +34,6 @@ void gpio_setup(void);
 void usart_setup(void) ;
 void clock_setup(void);
 void systick_setup(void);
-uint64_t millis(void);
-void delay(uint64_t duration);
 void spi_setup(void);
 
 #endif // STM32_INIT_C

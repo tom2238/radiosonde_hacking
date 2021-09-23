@@ -30,10 +30,6 @@
 #include <stdint.h>
 #include "init.h"
 
-// Storage for our monotonic system clock.
-// Note that it needs to be volatile since we're modifying it from an interrupt.
-static volatile uint64_t _millis = 0;
-
 void gpio_setup(void) {
     /* Enable the correct clock. */
     /* Enable GPIO RCC clock. */
@@ -122,23 +118,4 @@ void systick_setup(void) {
     systick_interrupt_enable();
     // Enable the system tick counter
     systick_counter_enable();
-}
-
-// Get the current value of the millis counter
-uint64_t millis(void) {
-    return _millis;
-}
-
-// This is our interrupt handler for the systick reload interrupt.
-// The full list of interrupt services routines that can be implemented is
-// listed in libopencm3/include/libopencm3/stm32/f0/nvic.h
-void sys_tick_handler(void) {
-    // Increment our monotonic clock
-    _millis++;
-}
-
-// Delay a given number of milliseconds in a blocking manner
-void delay(uint64_t duration) {
-    const uint64_t until = millis() + duration;
-    while (millis() < until);
 }

@@ -17,6 +17,7 @@
 #include "morse.h"
 #include "si4032.h"
 #include "init.h"
+#include "utils.h"
 
 // Private
 static uint16_t Morse_GetChar2Bit(unsigned char alfa);

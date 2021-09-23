@@ -138,25 +138,6 @@ void watchdog_setup(void) {
     iwdg_start();
 }
 
-// Get the current value of the millis counter
-uint64_t millis(void) {
-    return _millis;
-}
-
-// This is our interrupt handler for the systick reload interrupt.
-// The full list of interrupt services routines that can be implemented is
-// listed in libopencm3/include/libopencm3/stm32/f0/nvic.h
-void sys_tick_handler(void) {
-    // Increment our monotonic clock
-    _millis++;
-}
-
-// Delay a given number of milliseconds in a blocking manner
-void delay(uint64_t duration) {
-    const uint64_t until = millis() + duration;
-    while (millis() < until);
-}
-
 void spi_setup(void) {
   /* Enable clocks */
   rcc_periph_clock_enable(SI4032_NSEL_RCC);
