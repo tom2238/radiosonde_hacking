@@ -64,5 +64,10 @@ int console_gets(char *s, int len);
 void console_print_int(int number);
 void console_print_float(float number);
 void ftoa(float n, char* res, int afterpoint);
+/*
+ * Systick delay
+ */
+uint64_t millis(void);
+void delay(uint64_t duration);
 
 #endif // UTILS_H
