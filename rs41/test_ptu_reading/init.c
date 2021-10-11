@@ -38,12 +38,10 @@ void gpio_setup(void) {
     rcc_periph_clock_enable(LED_RED_RCC);
 
     /* Set LED_PIN to 'output push-pull'. */
-    gpio_set_mode(LED_GREEN_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, LED_GREEN_PIN);
-    //gpio_set_mode(LED_GREEN_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, LED_GREEN_PIN);
-    gpio_set_mode(LED_RED_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, LED_RED_PIN);
+    gpio_set_mode(LED_GREEN_GPIO, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, LED_GREEN_PIN);
+    gpio_set_mode(LED_RED_GPIO, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, LED_RED_PIN);
 
     // Enable PTU pins clock
-    rcc_periph_clock_enable(PTU_MEAS_OUT_RCC);
     rcc_periph_clock_enable(PTU_TEMP_REF1_RCC);
     rcc_periph_clock_enable(PTU_TEMP_REF2_RCC);
     rcc_periph_clock_enable(PTU_TEMP_HUMI_RCC);
@@ -51,14 +49,13 @@ void gpio_setup(void) {
     rcc_periph_clock_enable(PTU_TEMP_ACTIVATION_RCC);
 
     // Set PTU direction
-    gpio_set_mode(PTU_MEAS_OUT_GPIO, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, PTU_MEAS_OUT_PIN);
-    gpio_set_mode(PTU_TEMP_REF1_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_REF1_PIN);
-    gpio_set_mode(PTU_TEMP_REF2_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_REF2_PIN);
-    gpio_set_mode(PTU_TEMP_HUMI_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_HUMI_PIN);
-    gpio_set_mode(PTU_TEMP_SENSOR_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_SENSOR_PIN);
-    gpio_set_mode(PTU_TEMP_ACTIVATION_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_ACTIVATION_PIN);
+    gpio_set_mode(PTU_TEMP_REF1_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_REF1_PIN);
+    gpio_set_mode(PTU_TEMP_REF2_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_REF2_PIN);
+    gpio_set_mode(PTU_TEMP_HUMI_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_HUMI_PIN);
+    gpio_set_mode(PTU_TEMP_SENSOR_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_SENSOR_PIN);
+    gpio_set_mode(PTU_TEMP_ACTIVATION_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_ACTIVATION_PIN);
 
-    // Reset pins
+    // Reset PTU pins
     gpio_clear(PTU_TEMP_REF1_GPIO,PTU_TEMP_REF1_PIN);
     gpio_clear(PTU_TEMP_REF2_GPIO,PTU_TEMP_REF2_PIN);
     gpio_clear(PTU_TEMP_HUMI_GPIO,PTU_TEMP_HUMI_PIN);
@@ -67,122 +64,61 @@ void gpio_setup(void) {
 }
 
 void ptu_timer_setup(void) {
-    /* Enable TIM2 clock. */
+    // Input capture timer setup
+    // Enable clock
     rcc_periph_clock_enable(PTU_MEAS_OUT_TIMER_RCC);
-    rcc_periph_clock_enable(RCC_AFIO);
-
-    /* Reset TIM2 peripheral to defaults. */
+    // Reset peripheral
     rcc_periph_reset_pulse(PTU_MEAS_OUT_TIMER_RST);
-
-    /* Disable Input Capture. */
-    /*timer_ic_disable(PTU_MEAS_OUT_TIMER, TIM_IC1);
-    timer_ic_enable(PTU_MEAS_OUT_TIMER, TIM_IC2);
-    timer_ic_disable(PTU_MEAS_OUT_TIMER, TIM_IC3);
-    timer_ic_disable(PTU_MEAS_OUT_TIMER, TIM_IC4);*/
-
-    /* Disable Output Compare. */
-    /*timer_disable_oc_output(PTU_MEAS_OUT_TIMER, TIM_OC1);
-    timer_disable_oc_output(PTU_MEAS_OUT_TIMER, TIM_OC2);
-    timer_disable_oc_output(PTU_MEAS_OUT_TIMER, TIM_OC3);
-    timer_disable_oc_output(PTU_MEAS_OUT_TIMER, TIM_OC4);*/
-
-    /* Timer mode: no divider, edge, count up */
-
-    timer_disable_preload(PTU_MEAS_OUT_TIMER);
-
-    timer_continuous_mode(PTU_MEAS_OUT_TIMER);
-
-    timer_set_mode(PTU_MEAS_OUT_TIMER, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
-
-    timer_set_period(PTU_MEAS_OUT_TIMER, 0xFFFF);
-
-    //timer_set_prescaler(PTU_MEAS_OUT_TIMER, 1);
-
+    // Clock prescaler is 0, maximum accuracy
+    timer_set_prescaler(PTU_MEAS_OUT_TIMER,0);
+    // Counting up
+    timer_direction_up(PTU_MEAS_OUT_TIMER);
+    // Typically, set maximum period
+    timer_set_period(PTU_MEAS_OUT_TIMER,PTU_MEAS_OUT_TIMER_PERIOD);
+    // No clock divider
     timer_set_clock_division(PTU_MEAS_OUT_TIMER,TIM_CR1_CKD_CK_INT);
-
-    //timer_slave_set_mode(PTU_MEAS_OUT_TIMER,TIM_SMCR_SMS_OFF);
-
-    timer_ic_set_polarity(PTU_MEAS_OUT_TIMER, TIM_IC2, TIM_IC_RISING);
-
-    timer_ic_set_input(PTU_MEAS_OUT_TIMER, TIM_IC2, TIM_IC_IN_TI2);
-
-    timer_ic_set_prescaler(PTU_MEAS_OUT_TIMER, TIM_IC2, TIM_IC_PSC_OFF);
-
-    timer_ic_set_filter(PTU_MEAS_OUT_TIMER, TIM_IC2, TIM_IC_OFF);
-
+    // Enable Auto-Reload Buffering.
+    timer_enable_preload(PTU_MEAS_OUT_TIMER);
+    // Reset master
+    timer_set_master_mode(PTU_MEAS_OUT_TIMER,TIM_CR2_MMS_RESET);
+    // Disable slave mode
+    timer_slave_set_mode(PTU_MEAS_OUT_TIMER,TIM_SMCR_SMS_OFF);
+    // Rising edge
+    timer_ic_set_polarity(PTU_MEAS_OUT_TIMER,TIM_IC2,TIM_IC_RISING);
+    // Input on PA1 pin, channel 2
+    timer_ic_set_input(PTU_MEAS_OUT_TIMER,TIM_IC2,TIM_IC_IN_TI2);
+    // IC prescaler is off
+    timer_ic_set_prescaler(PTU_MEAS_OUT_TIMER,TIM_IC2,TIM_IC_PSC_OFF);
+    // IC lowpass filter is TimerClock/(8*8)
+    timer_ic_set_filter(PTU_MEAS_OUT_TIMER,TIM_IC2,TIM_IC_DTF_DIV_8_N_8);
+    // Enable input capture
+    timer_ic_enable(PTU_MEAS_OUT_TIMER,TIM_IC2);
+    // Enable IRQ from timer
     nvic_enable_irq(PTU_MEAS_OUT_TIMER_IRQ);
-
-
-
-    timer_ic_enable(PTU_MEAS_OUT_TIMER, TIM_IC2);
-
-
+    // Enable timer counter
+    timer_enable_counter(PTU_MEAS_OUT_TIMER);
+    // Enable channel 2 compare interrupt
     timer_enable_irq(PTU_MEAS_OUT_TIMER, TIM_DIER_CC2IE);
 
-
-    timer_enable_counter(PTU_MEAS_OUT_TIMER);
-
-    // External Clock Mode 1 - Rising edges of the selected trigger (TRGI) clock the counter.
-    //timer_slave_set_mode(PTU_MEAS_OUT_TIMER, TIM_SMCR_SMS_ECM1);
-    // Set the input filter parameters for the external trigger
-    //timer_slave_set_filter(PTU_MEAS_OUT_TIMER, TIM_IC_OFF);
-    //timer_slave_set_polarity(PTU_MEAS_OUT_TIMER, TIM_ET_RISING);
-    // Set the external trigger frequency division ratio.
-    //timer_slave_set_prescaler(PTU_MEAS_OUT_TIMER, TIM_IC_PSC_OFF);
-    // Set Slave Trigger Source, External Trigger input (ETRF)
-    //timer_slave_set_trigger(PTU_MEAS_OUT_TIMER, TIM_SMCR_TS_ETRF);
-    //timer_update_on_overflow(PTU_MEAS_OUT_TIMER);
-
-    /* Enable TIM2 interrupt. */
-    //nvic_enable_irq(PTU_MEAS_OUT_TIMER_IRQ);
-
-    /* Counter enable. */
-    //timer_enable_counter(PTU_MEAS_OUT_TIMER);
-
-    /* Enable Channel 2 compare interrupt to recalculate compare values */
-    //timer_enable_irq(PTU_MEAS_OUT_TIMER, TIM_DIER_CC2IE);
-}
-
-void tim_setup(void) {
-    /* Enable TIM4 clock. */
-    rcc_periph_clock_enable(RCC_TIM2);
-
-    /* Reset TIM4 peripheral to defaults. */
-    rcc_periph_reset_pulse(RST_TIM2);
-
-    /* Timer global mode:
-     * - No divider
-     * - Alignment edge
-     * - Direction up
-     * (These are actually default values after reset above, so this call
-     * is strictly unnecessary, but demos the api for alternative settings)
-     */
-    timer_set_mode(TIM2, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
-
-    /*
-     * Please take note that the clock source for STM32 timers
-     * might not be the raw APB1/APB2 clocks.  In various conditions they
-     * are doubled.  See the Reference Manual for full details!
-     * Set the prescaler to have the timer run at 100 Hz
-     * TIM3 running on 24 kHz now
-     */
-    timer_set_prescaler(TIM2, 2*rcc_apb1_frequency/24000);
-
-    /* Disable preload. */
-    timer_disable_preload(TIM2);
-    timer_continuous_mode(TIM2);
-
-    /* Count to 240, update compare value continuously */
-    // count to 240 with 24 kHz clock => 100 Hz overflow
-    timer_set_period(TIM2,240);
-
-    /* Set the initual output compare value for OC4. */
-    timer_set_oc_value(TIM2,TIM_OC4, 120); // PWD 50% duty cycle
-    timer_set_oc_mode(TIM2, TIM_OC4, TIM_OCM_PWM1); // PWM Output is active (high) when counter is less than output compare value
-    timer_enable_oc_output(TIM2, TIM_OC4); // Enable output comparator
-
-    /* Counter enable. */
-    timer_enable_counter(TIM2);
+    // Frequency timer setup
+    // Enable clock
+    rcc_periph_clock_enable(FREQUENCY_TIMER_RCC);
+    // Reset peripheral
+    rcc_periph_reset_pulse(FREQUENCY_TIMER_RST);
+    // No clock divider, edge alignment, counting up
+    timer_set_mode(FREQUENCY_TIMER, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
+    // Clock prescaler is 0, maximum accuracy
+    timer_set_prescaler(FREQUENCY_TIMER,0);
+    // Disable Auto-Reload Buffering.
+    timer_disable_preload(FREQUENCY_TIMER);
+    // Enable the Timer to Run Continuously.
+    timer_continuous_mode(FREQUENCY_TIMER);
+    // Typically, set maximum period
+    timer_set_period(FREQUENCY_TIMER, FREQUENCY_TIMER_PERIOD);
+    // Enable IRQ from timer
+    nvic_enable_irq(FREQUENCY_TIMER_IRQ);
+    // Enable timer overflow interrupt
+    timer_enable_irq(FREQUENCY_TIMER, TIM_DIER_UIE);
 }
 
 void usart_setup(void) {

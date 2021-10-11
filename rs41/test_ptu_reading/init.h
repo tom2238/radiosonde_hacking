@@ -18,7 +18,7 @@
 
 // Vaisala RS41 leds
 #define LED_GREEN_GPIO GPIOB
-#define LED_GREEN_PIN GPIO11
+#define LED_GREEN_PIN GPIO7
 #define LED_GREEN_RCC RCC_GPIOB
 #define LED_RED_GPIO GPIOB
 #define LED_RED_PIN GPIO8
@@ -31,13 +31,20 @@
 #define XDATA_USART_RCC RCC_USART3
 
 // Vaisala RS41 external timer input
-#define PTU_MEAS_OUT_GPIO GPIOA
-#define PTU_MEAS_OUT_PIN GPIO1
-#define PTU_MEAS_OUT_RCC RCC_GPIOA
 #define PTU_MEAS_OUT_TIMER TIM2
 #define PTU_MEAS_OUT_TIMER_RCC RCC_TIM2
 #define PTU_MEAS_OUT_TIMER_IRQ NVIC_TIM2_IRQ
 #define PTU_MEAS_OUT_TIMER_RST RST_TIM2
+#define PTU_MEAS_OUT_TIMER_PERIOD 0xFFFF
+
+// TIM3 counter as stopwatch
+#define FREQUENCY_TIMER TIM3
+#define FREQUENCY_TIMER_RCC RCC_TIM3
+#define FREQUENCY_TIMER_IRQ NVIC_TIM3_IRQ
+#define FREQUENCY_TIMER_RST RST_TIM3
+#define FREQUENCY_TIMER_PERIOD 0xFFFF
+#define FREQUENCY_TIMER_CLOCK 24000000UL
+#define FREQUENCY_TIMER_PULSE_LIMIT 100
 
 // Vaisala RS41 PTU pins
 #define PTU_TEMP_REF1_GPIO GPIOA
@@ -58,7 +65,6 @@
 
 void gpio_setup(void);
 void ptu_timer_setup(void);
-void tim_setup(void);
 void usart_setup(void);
 void clock_setup(void);
 void systick_setup(void);

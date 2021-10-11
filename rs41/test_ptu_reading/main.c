@@ -56,14 +56,26 @@
 #include "init.h"
 #include "utils.h"
 
-static volatile uint8_t meas_state = 0;
-static volatile uint32_t meas_T1 = 0;
-static volatile uint32_t meas_T2 = 0;
-static volatile uint32_t meas_Ticks = 0;
-static volatile uint16_t meas_TIM2_OVC = 0;
-static volatile uint32_t meas_Freq = 0;
+typedef enum {
+    FREQ_STATE_IDLE = 1,
+    FREQ_STATE_RUN,
+    FREQ_STATE_DONE
+}PTUFrequencyCounterState;
+
+typedef struct {
+    uint32_t OverCapture;
+    uint32_t Pulses;
+    uint32_t PeriodTimer;
+    uint32_t FrequencyHz;
+    PTUFrequencyCounterState State;
+}PTUFrequencyCounter;
 
 void tim2_isr(void);
+void tim3_isr(void);
+void PTU_FrequencyMeasure(PTUFrequencyCounter *fcounter);
+
+PTUFrequencyCounter ptu_meas = {0,0,0,0,FREQ_STATE_IDLE};
+uint32_t c_cnt = 0;
 
 int main(void) {
     // Setup all parts
@@ -74,83 +86,114 @@ int main(void) {
     // Systick for delay function
     systick_setup();
     // USART for serial print
-    //usart_setup();
+    usart_setup();
     // PTU timer
-   // ptu_timer_setup();
-    //tim_setup();
+    ptu_timer_setup();
 
     // Set different leds state
     gpio_clear(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_clear(LED_RED_GPIO,LED_RED_PIN);
 
-    // Select REF1 750 ohm
-    //gpio_set(PTU_TEMP_REF1_GPIO,PTU_TEMP_REF1_PIN);
-    // Temperature activation
-    //gpio_set(PTU_TEMP_ACTIVATION_GPIO,PTU_TEMP_ACTIVATION_PIN);
-
-
-    //console_puts("Start ...\n");
-    uint32_t timcnt;
-    unsigned int oc_value = 1;
+    console_puts("Start ...\n");
 
 	while (1) {
         /* Blink the LED on the board. */
-        //gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
-        //gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
+        gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
+        gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
-        /*gpio_set(PTU_TEMP_REF1_GPIO,PTU_TEMP_REF1_PIN);
-        delay(10);
-        gpio_clear(PTU_TEMP_REF1_GPIO,PTU_TEMP_REF1_PIN);
-        delay(10);
-        gpio_set(PTU_TEMP_REF2_GPIO,PTU_TEMP_REF2_PIN);
-        delay(10);
-        gpio_clear(PTU_TEMP_REF2_GPIO,PTU_TEMP_REF2_PIN);
-        */
-        //delay(50);
+        // Select REF1 750 ohm
+        gpio_set(PTU_TEMP_REF1_GPIO,PTU_TEMP_REF1_PIN);
+        delay(1);
+        // Temperature activation
+        gpio_set(PTU_TEMP_ACTIVATION_GPIO,PTU_TEMP_ACTIVATION_PIN);
+        delay(1);
+
+        PTU_FrequencyMeasure(&ptu_meas);
 
         // Temperature deactivation
-        //gpio_clear(PTU_TEMP_ACTIVATION_GPIO,PTU_TEMP_ACTIVATION_PIN);
+        gpio_clear(PTU_TEMP_ACTIVATION_GPIO,PTU_TEMP_ACTIVATION_PIN);
+        delay(1);
         // Deselect REF1 750 ohm
-        //gpio_clear(PTU_TEMP_REF1_GPIO,PTU_TEMP_REF1_PIN);
+        gpio_clear(PTU_TEMP_REF1_GPIO,PTU_TEMP_REF1_PIN);
+        delay(1);
 
-        /*console_puts("Freq: ");
-        console_print_int(meas_Freq);
-        console_puts(" Hz, ");
-        timcnt = timer_get_counter(PTU_MEAS_OUT_TIMER);
-        console_puts("cnt: ");
-        console_print_int(timcnt);
-        console_puts("\n");*/
+        console_puts("Ticks: ");
+        console_print_int(ptu_meas.PeriodTimer);
+        console_puts(", Freq: ");
+        console_print_int(ptu_meas.FrequencyHz);
+        console_puts(" Hz\n");
+
+        delay(100);
 
         /* Blink the LED on the board. */
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
-        //delay(1);
+        delay(800);
 
-        //delay(30);
-        //timer_set_oc_value(TIM2,TIM_OC4, oc_value);
-        //oc_value = (unsigned int)(oc_value+10);
-        //if(oc_value > 240) {
-        //    oc_value = 1;
-        //}
+        console_puts("C:");
+        console_print_int(c_cnt);
+        console_puts("\n");
+        c_cnt = 0;
 	}
-
 	return 0;
 }
 
 void tim2_isr(void) {
     if (timer_get_flag(PTU_MEAS_OUT_TIMER, TIM_SR_CC2IF)) {
-        if(meas_state == 0) {
-            meas_T1 = timer_get_counter(PTU_MEAS_OUT_TIMER);
-            meas_TIM2_OVC = 0;
-            meas_state = 1;
-        } else {
-            meas_T2 = timer_get_counter(PTU_MEAS_OUT_TIMER);
-            meas_Ticks = (meas_T2 + (meas_TIM2_OVC * 65536)) - meas_T1;
-            meas_Freq = (uint32_t)(rcc_ahb_frequency/meas_Ticks);
-            meas_state = 0;
+        c_cnt++;
+        if (ptu_meas.State == FREQ_STATE_RUN) {
+            ptu_meas.Pulses++;
+            if(ptu_meas.Pulses > FREQUENCY_TIMER_PULSE_LIMIT) {
+                ptu_meas.PeriodTimer = timer_get_counter(FREQUENCY_TIMER);
+                ptu_meas.State = FREQ_STATE_DONE;
+                timer_disable_counter(FREQUENCY_TIMER);
+            }
         }
-        timer_clear_flag(PTU_MEAS_OUT_TIMER, TIM_SR_CC2IF); /* Clear interrupt flag. */
+        timer_clear_flag(PTU_MEAS_OUT_TIMER, TIM_SR_CC2IF);
     }
-    console_putc('I');
+}
+
+void tim3_isr(void) {
+    if(timer_get_flag(FREQUENCY_TIMER, TIM_SR_UIF)) {
+        ptu_meas.OverCapture += 65536;
+        timer_clear_flag(FREQUENCY_TIMER, TIM_SR_UIF);
+    }
+}
+
+void PTU_FrequencyMeasure(PTUFrequencyCounter *fcounter) {
+    // Timeout in ms
+    uint16_t timeout = 100;
+    // Reset before measure
+    fcounter->State = FREQ_STATE_RUN;
+    fcounter->OverCapture = 0;
+    fcounter->Pulses = 0;
+    fcounter->PeriodTimer = 0;
+    fcounter->FrequencyHz = 0;
+    // Reset the counter. This will generate one extra overflow for next measurement.
+    // In case of nothing got counted, manually generate a reset to keep consistency.
+    timer_set_counter(FREQUENCY_TIMER,0);
+    // Enable the counter
+    timer_enable_counter(FREQUENCY_TIMER);
+    // Wait for ticks or timeout
+    while(fcounter->Pulses <= FREQUENCY_TIMER_PULSE_LIMIT && timeout-- > 0) {
+        delay(1);
+    }
+    // Timeout, low frequency or short timeout
+    // Because if timeout reached, add one into timeout variable to get zero.
+    timeout++;
+    // Debug
+    console_puts("T:");
+    console_print_int(timeout);
+    console_puts(", P:");
+    console_print_int(fcounter->PeriodTimer);
+    console_puts("\n");
+    if(!timeout) {
+        fcounter->FrequencyHz = 0;
+        fcounter->PeriodTimer = 0;
+    } else {
+        // Frequency is correct
+        fcounter->PeriodTimer += fcounter->OverCapture;
+        fcounter->FrequencyHz = (FREQUENCY_TIMER_CLOCK)/(fcounter->PeriodTimer/FREQUENCY_TIMER_PULSE_LIMIT);
+    }
 }
