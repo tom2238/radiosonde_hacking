@@ -42,25 +42,43 @@ void gpio_setup(void) {
     gpio_set_mode(LED_RED_GPIO, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, LED_RED_PIN);
 
     // Enable PTU pins clock
+    // Temperature
     rcc_periph_clock_enable(PTU_TEMP_REF1_RCC);
     rcc_periph_clock_enable(PTU_TEMP_REF2_RCC);
     rcc_periph_clock_enable(PTU_TEMP_HUMI_RCC);
     rcc_periph_clock_enable(PTU_TEMP_SENSOR_RCC);
     rcc_periph_clock_enable(PTU_TEMP_ACTIVATION_RCC);
+    // Humidity
+    rcc_periph_clock_enable(PTU_HUMI_REF1_RCC);
+    rcc_periph_clock_enable(PTU_HUMI_REF2_RCC);
+    rcc_periph_clock_enable(PTU_HUMI_SENSOR_RCC);
+    rcc_periph_clock_enable(PTU_HUMI_ACTIVATION_RCC);
 
     // Set PTU direction
+    // Temperature
     gpio_set_mode(PTU_TEMP_REF1_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_REF1_PIN);
     gpio_set_mode(PTU_TEMP_REF2_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_REF2_PIN);
     gpio_set_mode(PTU_TEMP_HUMI_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_HUMI_PIN);
     gpio_set_mode(PTU_TEMP_SENSOR_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_SENSOR_PIN);
     gpio_set_mode(PTU_TEMP_ACTIVATION_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_TEMP_ACTIVATION_PIN);
+    // Humidity
+    gpio_set_mode(PTU_HUMI_REF1_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_HUMI_REF1_PIN);
+    gpio_set_mode(PTU_HUMI_REF2_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_HUMI_REF2_PIN);
+    gpio_set_mode(PTU_HUMI_SENSOR_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_HUMI_SENSOR_PIN);
+    gpio_set_mode(PTU_HUMI_ACTIVATION_GPIO, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, PTU_HUMI_ACTIVATION_PIN);
 
     // Reset PTU pins
+    // Temperature
     gpio_clear(PTU_TEMP_REF1_GPIO,PTU_TEMP_REF1_PIN);
     gpio_clear(PTU_TEMP_REF2_GPIO,PTU_TEMP_REF2_PIN);
     gpio_clear(PTU_TEMP_HUMI_GPIO,PTU_TEMP_HUMI_PIN);
     gpio_clear(PTU_TEMP_SENSOR_GPIO,PTU_TEMP_SENSOR_PIN);
-    gpio_clear(PTU_TEMP_ACTIVATION_GPIO,PTU_TEMP_ACTIVATION_PIN);
+    gpio_set(PTU_TEMP_ACTIVATION_GPIO,PTU_TEMP_ACTIVATION_PIN);
+    // Humidity
+    gpio_clear(PTU_HUMI_REF1_GPIO,PTU_HUMI_REF1_PIN);
+    gpio_clear(PTU_HUMI_REF2_GPIO,PTU_HUMI_REF2_PIN);
+    gpio_clear(PTU_HUMI_SENSOR_GPIO,PTU_HUMI_SENSOR_PIN);
+    gpio_set(PTU_HUMI_ACTIVATION_GPIO,PTU_HUMI_ACTIVATION_PIN);
 }
 
 void ptu_timer_setup(void) {

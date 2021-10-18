@@ -94,6 +94,8 @@ int main(void) {
     gpio_clear(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_clear(LED_RED_GPIO,LED_RED_PIN);
 
+    gpio_clear(PTU_HUMI_ACTIVATION_GPIO,PTU_HUMI_ACTIVATION_PIN);
+
     console_puts("Start ...\n");
 
 	while (1) {
@@ -101,20 +103,21 @@ int main(void) {
         gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
 
+
+        // Temperature activation
+        gpio_clear(PTU_TEMP_ACTIVATION_GPIO,PTU_TEMP_ACTIVATION_PIN);
+        delay(1);
         // Select REF1 750 ohm
         gpio_set(PTU_TEMP_REF1_GPIO,PTU_TEMP_REF1_PIN);
-        delay(1);
-        // Temperature activation
-        gpio_set(PTU_TEMP_ACTIVATION_GPIO,PTU_TEMP_ACTIVATION_PIN);
         delay(1);
 
         PTU_FrequencyMeasure(&ptu_meas);
 
-        // Temperature deactivation
-        gpio_clear(PTU_TEMP_ACTIVATION_GPIO,PTU_TEMP_ACTIVATION_PIN);
-        delay(1);
         // Deselect REF1 750 ohm
         gpio_clear(PTU_TEMP_REF1_GPIO,PTU_TEMP_REF1_PIN);
+        delay(1);
+        // Temperature deactivation
+        gpio_set(PTU_TEMP_ACTIVATION_GPIO,PTU_TEMP_ACTIVATION_PIN);
         delay(1);
 
         console_puts("Ticks: ");
@@ -188,12 +191,13 @@ void PTU_FrequencyMeasure(PTUFrequencyCounter *fcounter) {
     console_puts(", P:");
     console_print_int(fcounter->PeriodTimer);
     console_puts("\n");
-    if(!timeout) {
-        fcounter->FrequencyHz = 0;
-        fcounter->PeriodTimer = 0;
-    } else {
+    //if(!timeout) {
+    //    fcounter->FrequencyHz = 0;
+    //    fcounter->PeriodTimer = 0;
+   // } else {
         // Frequency is correct
         fcounter->PeriodTimer += fcounter->OverCapture;
         fcounter->FrequencyHz = (FREQUENCY_TIMER_CLOCK)/(fcounter->PeriodTimer/FREQUENCY_TIMER_PULSE_LIMIT);
-    }
+    //}
 }
+
