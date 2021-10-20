@@ -144,6 +144,11 @@
 // It could be half of CPU frequency. For 24 MHz CPU clock try 1250000
 #define SI4032_INTERRUPT_CHECK_DELAY_CONSTANT 12500000
 
+// GPIO port number
+#define SI4032_GPIO_PORT_0 0x0B
+#define SI4032_GPIO_PORT_1 0x0C
+#define SI4032_GPIO_PORT_2 0x0D
+
 // Radio packet type: short, long, infinite
 enum SI4032_PACKET_TYPE {
     PACKET_TYPE_SHORT,
@@ -165,6 +170,8 @@ void Si4032_SetModulatioSource(uint8_t source);
 void Si4032_SetModulatioType(uint8_t type);
 void Si4032_SetFrequencyDeviation(uint32_t frequency_hz);
 void Si4032_SetFrequencyOffset(uint16_t offset_hz);
+void Si4032_GPIOSet(uint8_t gpio_drv);
+void Si4032_GPIOClear(uint8_t gpio_drv);
 int8_t Si4032_GetTemperature(void);
 uint16_t Si4032_GetBatteryVoltage(void);
 // FIFO packet

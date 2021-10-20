@@ -304,6 +304,52 @@ int8_t Si4032_GetTemperature(void) {
 }
 
 /**
+ * @brief Si4032_GPIOSet
+ * @param gpio
+ */
+void Si4032_GPIOSet(uint8_t gpio_drv) {
+    // Driving Capability Setting = 0x0
+    // Pullup Resistor Enable = 0
+    // Pin Function Select = VDD
+    switch (gpio_drv) {
+    case SI4032_GPIO_PORT_0:
+        Si4032_Write(SI4032_REG_GPIO0_CONFIG,0b00011101);
+        break;
+    case SI4032_GPIO_PORT_1:
+        Si4032_Write(SI4032_REG_GPIO1_CONFIG,0b00011101);
+        break;
+    case SI4032_GPIO_PORT_2:
+        Si4032_Write(SI4032_REG_GPIO2_CONFIG,0b00011101);
+        break;
+    default:
+        break;
+    }
+}
+
+/**
+ * @brief Si4032_GPIOClear
+ * @param gpio_drv
+ */
+void Si4032_GPIOClear(uint8_t gpio_drv) {
+    // Driving Capability Setting = 0x0
+    // Pullup Resistor Enable = 0
+    // Pin Function Select = GND
+    switch (gpio_drv) {
+    case SI4032_GPIO_PORT_0:
+        Si4032_Write(SI4032_REG_GPIO0_CONFIG,0b00011111);
+        break;
+    case SI4032_GPIO_PORT_1:
+        Si4032_Write(SI4032_REG_GPIO1_CONFIG,0b00011111);
+        break;
+    case SI4032_GPIO_PORT_2:
+        Si4032_Write(SI4032_REG_GPIO2_CONFIG,0b00011111);
+        break;
+    default:
+        break;
+    }
+}
+
+/**
  * @brief Si4032_GetBatteryVoltage Return SI4032 radio voltage in milivolts
  * @return Return SI4032 radio voltage in milivolts
  */
