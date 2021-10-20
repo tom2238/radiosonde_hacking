@@ -44,7 +44,7 @@
 #define FREQUENCY_TIMER_RST RST_TIM3
 #define FREQUENCY_TIMER_PERIOD 0xFFFF
 #define FREQUENCY_TIMER_CLOCK 24000000UL
-#define FREQUENCY_TIMER_PULSE_LIMIT 100
+#define FREQUENCY_TIMER_PULSE_LIMIT 1024
 
 // Vaisala RS41 PTU pins
 // Temperature
@@ -82,5 +82,6 @@ void ptu_timer_setup(void);
 void usart_setup(void);
 void clock_setup(void);
 void systick_setup(void);
+void spi_setup(void);
 
 #endif // STM32_INIT_C
