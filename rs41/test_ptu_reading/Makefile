@@ -26,7 +26,7 @@ DEFS += -I$(LIBRARY_DIR)
 OBJS += $(LIBRARY_DIR)/utils.o
 OBJS += $(LIBRARY_DIR)/si4032.o
 # Add project custom objects
-OBJS += init.o
+OBJS += init.o ptu_measure.o
 # libOpenCM dir
 OPENCM3_DIR = ../../libopencm3
 LDSCRIPT = ../../linker/stm32f100x8.ld
