@@ -18,6 +18,7 @@
 * si4032_rtl433 - Sending temperature and humidity to weather station
 * si4032_marker - Channel marker, use FIFO mode with baudrate changing
 * ublox6 - Serial print and packet sending with GPS information
+* ptu_reading - Try attempting to read PTU :-) 
 
 ## Si4032 datasheet
 * Si4030/31/32 ISM TRANSMITTER - https://www.silabs.com/documents/public/data-sheets/Si4030-31-32.pdf
@@ -29,3 +30,10 @@
 * Product summary - https://www.u-blox.com/sites/default/files/products/documents/UBX-G6010-ST_ProductSummary_%28GPS.G6-HW-09001%29.pdf
 * UBX-G6010 datasheet - http://innovictor.com/pdf/UBXG6010_UBXG600_UBXG0010_DataSheet_GPS%20G6-X-09004_Confidential.pdf
 * Protocol Specification V14 - https://www.u-blox.com/sites/default/files/products/documents/u-blox6-GPS-GLONASS-QZSS-V14_ReceiverDescrProtSpec_%28GPS.G6-SW-12013%29_Public.pdf
+
+## PTU chips datasheet
+* Hex unbuffered inverter - https://assets.nexperia.com/documents/data-sheet/74HCU04.pdf
+* Triple buffer - https://assets.nexperia.com/documents/data-sheet/74LVC3G34.pdf
+* Low-voltage,single-supply,4-channelspst analogswitch - https://www.ti.com/lit/ds/symlink/ts3a4751.pdf
+* SPDT Analog Switch Single-Channel 2:1 Multiplexer and Demultiplexer - https://www.ti.com/lit/ds/symlink/ts5a9411.pdf
+* TinyLogic UHS 3-Input NORGate - https://www.onsemi.com/pdf/datasheet/nc7sz27-d.pdf
