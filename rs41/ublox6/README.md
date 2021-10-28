@@ -1,8 +1,8 @@
 # RS41 Ublox G6010-ST GPS
 
 RS41 project with Si4032 and Ublox G6010 GPS
-* Blinking with onboard green led
-* Send C to turn on red led or send S to turn off red led (on XDATA USART)
+* Blinking with onboard green LED if waiting for GPS 3D fix, if fix is OK then turn on.
+* Send C to turn on red LED or send S to turn off red LED (on XDATA USART).
 * XDATA USART3 baud rate is 38400 bps
 * GPS USART1 baud rate is 38400 bps
 * Default transmitting frequency is 433.125 MHz

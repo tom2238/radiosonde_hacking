@@ -44,6 +44,9 @@ static volatile uint8_t _nack_received = 0;
 // Current GPS data
 static uBlox6_GPSData _current_GPSData;
 
+// GPS message received
+static uint8_t _gps_message_received = 0;
+
 /**
  * @brief Ublox6_CalculateChecksum
  * @param checksum Checksum structure
@@ -254,6 +257,13 @@ static uint8_t Ublox6_WaitForACK(void) {
  */
 void Ublox6_GetLastData(uBlox6_GPSData *gpsEntry) {
   //usart_disable_rx_interrupt(GPS_USART);
+  uint16_t timeout = 2000;
+  // Wait for new message
+  // Some kind of time synchronization??
+  // TODO: try some _gps_message_received++ method in Ublox6_HandleByte()
+  while(_gps_message_received == 1 && timeout-- > 0) {
+      delay(1);
+  }
   memcpy(gpsEntry, &_current_GPSData, sizeof(uBlox6_GPSData));
   //usart_enable_rx_interrupt(GPS_USART);
 }
@@ -372,6 +382,7 @@ int Ublox6_HandleByte(uint8_t data) {
                 _nack_received = 1;
                 break;
             case ((UBLOX6_CLASS_ID_NAV) | UBLOX6_MSG_ID_NAVTIMEUTC << 8):
+                _gps_message_received = 1;
                 _current_GPSData.year = packet->data.navtimeutc.year;
                 _current_GPSData.month = packet->data.navtimeutc.month;
                 _current_GPSData.day = packet->data.navtimeutc.day;
@@ -400,6 +411,7 @@ int Ublox6_HandleByte(uint8_t data) {
                 _current_GPSData.gSpeed = packet->data.navvelned.gSpeed;
                 _current_GPSData.heading = packet->data.navvelned.heading;
                 _current_GPSData.sAcc = packet->data.navvelned.sAcc;
+                _gps_message_received = 0;
                 //console_putc('V'); // Debug info
                 break;
             default:

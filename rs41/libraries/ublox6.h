@@ -355,6 +355,16 @@ typedef enum {
     UBLOX6_INIT_ALL
 } uBlox6_init_state;
 
+/* GPS fix states */
+typedef enum {
+    UBLOX6_GPSFIX_NONE = 0,
+    UBLOX6_GPSFIX_DEAD_RECKONING = 1,
+    UBLOX6_GPSFIX_2D_FIX = 2,
+    UBLOX6_GPSFIX_3D_FIX = 3,
+    UBLOX6_GPSFIX_GPS_DEAD_RECKONING = 4,
+    UBLOX6_GPSFIX_TIME_ONLY_FIX = 5
+} ublox6_GPSFixState;
+
 // Functions
 // Public
 uint8_t Ublox6_Init(uBlox6_init_state init_state);

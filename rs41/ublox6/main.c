@@ -120,9 +120,9 @@ int main(void) {
     // Confgure all other Ublox settings
     Ublox6_Init(UBLOX6_INIT_ALL);
 
-    // Set different leds state
+    // Turn off both LEDs
     gpio_set(LED_GREEN_GPIO,LED_GREEN_PIN);
-    gpio_clear(LED_RED_GPIO,LED_RED_PIN);
+    gpio_set(LED_RED_GPIO,LED_RED_PIN);
     delay(500);
 
     // Frame init
@@ -143,19 +143,21 @@ int main(void) {
     console_puts("Init done!\n");
 
 	while (1) {
-        /* Blink the LED on the board. */
-        gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
-
         // Wait for 1000 ms
         while (millis() < millis_last);
         // Save millis
         millis_last = millis() + 1000;
 
-        /* Blink the LED on the board. */
-        gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);        
-        delay(200);
-
+        // Get current GPS data
         Ublox6_GetLastData(&gpsData);
+
+        if(gpsData.gpsFix == UBLOX6_GPSFIX_3D_FIX) {
+            // Set Green LED if GPS is fixed
+            gpio_clear(LED_GREEN_GPIO,LED_GREEN_PIN);
+        } else  {
+            // If not blinking with Green LED
+            gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
+        }
 
         console_print_int(gpsData.year);
         console_puts(".");
@@ -194,6 +196,7 @@ int main(void) {
         Frame_CalculateCRC16(&dataframe);
         Frame_XOR(&dataframe,0); // XORing NRZ frame
         // Preamble(40) and header(8) is added in Si4032
+        delay(630);
         Si4032_WriteShortPacket((((uint8_t*)&dataframe.value) + Frame_GetHeadSize()), Frame_GetUserLength()+Frame_GetCRCSize());
         // Clear watchdog timer
         iwdg_reset();
