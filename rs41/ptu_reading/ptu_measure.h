@@ -35,11 +35,11 @@
 
 // Vaisala RS41 PTU pins
 // Temperature
-#define PTU_TEMP_REF1_GPIO GPIOA
-#define PTU_TEMP_REF1_PIN GPIO3
+#define PTU_TEMP_REF1_GPIO GPIOB
+#define PTU_TEMP_REF1_PIN GPIO6
 #define PTU_TEMP_REF1_RCC RCC_GPIOA
-#define PTU_TEMP_REF2_GPIO GPIOB
-#define PTU_TEMP_REF2_PIN GPIO6
+#define PTU_TEMP_REF2_GPIO GPIOA
+#define PTU_TEMP_REF2_PIN GPIO3
 #define PTU_TEMP_REF2_RCC RCC_GPIOB
 #define PTU_TEMP_HUMI_GPIO GPIOC
 #define PTU_TEMP_HUMI_PIN GPIO14
@@ -70,8 +70,8 @@
 #define PTU_CONSTANT_PT1000_A1 0.187654
 #define PTU_CONSTANT_PT1000_A2 8.2e-06
 // Reference resistor values
-#define PTU_REFERENCE_RESISTOR1_OHM 750
-#define PTU_REFERENCE_RESISTOR2_OHM 1100
+#define PTU_REFERENCE_RESISTOR1_OHM 750.0f
+#define PTU_REFERENCE_RESISTOR2_OHM 1100.0f
 
 // PTU stopwatch timer/counter states
 typedef enum {
@@ -89,7 +89,7 @@ typedef struct {
     PTUFrequencyCounterState State;
 }PTUFrequencyCounter;
 
-// RAW PTU frequency data
+// RAW PTU data
 typedef struct {
     uint32_t temperature_ref1;
     uint32_t temperature_ref2;
@@ -107,6 +107,13 @@ typedef struct {
     float humidity_sensor;
 }PTUCalculatedData;
 
+// Calibration data
+typedef struct {
+    float cal_T1[3];
+    float cal_H[2];
+    float cal_T2[3];
+}PTUCalibrationData;
+
 // Functions
 // Public
 void PTU_Init(void);
@@ -114,5 +121,6 @@ extern void PTU_EnableReferenceHeating(void);
 extern void PTU_DisableReferenceHeating(void);
 void PTU_MeasureTemperature(PTURAWData *rawdata);
 void PTU_MeasureHumidity(PTURAWData *rawdata);
+void PTU_CalculateData(PTURAWData *rawdata, PTUCalculatedData *caldata, PTUCalibrationData calibration);
 
 #endif // PTU_MEASURE_H

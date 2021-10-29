@@ -11,10 +11,10 @@ RS41 project with attempting to read PTU values.
 * For more information see https://github.com/bazjo/RS41_Hardware/ and logicdata/Meas+Div, Startup.logicdata + logicdata/Switches+Meas_Out, Startup.logicdata (required software: Logic 1.2.18).
 
 ## Temperature channel
-* PA3 - 1st measurement (REF1)
+* PB6 - 1st measurement (REF1)
 * PC14 - 2nd measurement (HUMI TEMP)
 * PC15 - 2nd measurement (SENSOR TEMP)
-* PB6 - 3rd measurement (REF2)
+* PA3 - 3rd measurement (REF2)
 * PB12 - TEMP mode activation / start measurement
 
 ## Humidity channel
@@ -22,3 +22,18 @@ RS41 project with attempting to read PTU values.
 * PB3 - 2nd measurement (HUMI value)
 * PB5 - 3rd measurement (REF2)
 * PA2 - HUMI mode activation / start measurement
+
+```
+T_REF1: 266689 pulses T_Humidity: 370634 pulses T_Sensor: 359655 pulses T_REF2: 386394 pulses
+H_REF1: 561279 pulses H_Sensor: 561063 pulses H_REF2: 561079 pulses
+Temperature sensor: 20.692 degC Temperature humidity: 21.279 degC
+T_REF1: 266689 pulses T_Humidity: 370626 pulses T_Sensor: 359775 pulses T_REF2: 385994 pulses
+H_REF1: 561280 pulses H_Sensor: 561065 pulses H_REF2: 561078 pulses
+Temperature sensor: 21.039 degC Temperature humidity: 21.544 degC
+T_REF1: 266689 pulses T_Humidity: 370642 pulses T_Sensor: 359535 pulses T_REF2: 385957 pulses
+H_REF1: 561284 pulses H_Sensor: 561066 pulses H_REF2: 561074 pulses
+Temperature sensor: 20.869 degC Temperature humidity: 21.582 degC
+T_REF1: 266689 pulses T_Humidity: 370642 pulses T_Sensor: 359743 pulses T_REF2: 386013 pulses
+H_REF1: 561285 pulses H_Sensor: 561282 pulses H_REF2: 560537 pulses
+Temperature sensor: 21.001 degC Temperature humidity: 21.544 degC
+```

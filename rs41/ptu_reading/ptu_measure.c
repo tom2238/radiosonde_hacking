@@ -399,28 +399,28 @@ void PTU_MeasureTemperature(PTURAWData *rawdata) {
     PTU_FrequencyMeasure(&_ptu_frequency);
     PTU_TemperatureDeselectREF1();
     PTU_DisableTemperatureMeasure();
-    rawdata->temperature_ref1 = _ptu_frequency.FrequencyHz;
+    rawdata->temperature_ref1 = _ptu_frequency.PeriodTimer;
     // Humidity temperature
     PTU_EnableTemperatureMeasure();
     PTU_TemperatureSelectHumidity();
     PTU_FrequencyMeasure(&_ptu_frequency);
     PTU_TemperatureDeselectHumidity();
     PTU_DisableTemperatureMeasure();
-    rawdata->temperature_humi = _ptu_frequency.FrequencyHz;
+    rawdata->temperature_humi = _ptu_frequency.PeriodTimer;
     // Main sensor temperature
     PTU_EnableTemperatureMeasure();
     PTU_TemperatureSelectSensor();
     PTU_FrequencyMeasure(&_ptu_frequency);
     PTU_TemperatureDeselectSensor();
     PTU_DisableTemperatureMeasure();
-    rawdata->temperature_sensor = _ptu_frequency.FrequencyHz;
+    rawdata->temperature_sensor = _ptu_frequency.PeriodTimer;
     // REF2 1100 ohm resistor
     PTU_EnableTemperatureMeasure();
     PTU_TemperatureSelectREF2();
     PTU_FrequencyMeasure(&_ptu_frequency);
     PTU_TemperatureDeselectREF2();
     PTU_DisableTemperatureMeasure();
-    rawdata->temperature_ref2 = _ptu_frequency.FrequencyHz;
+    rawdata->temperature_ref2 = _ptu_frequency.PeriodTimer;
 }
 
 /**
@@ -434,19 +434,51 @@ void PTU_MeasureHumidity(PTURAWData *rawdata) {
     PTU_FrequencyMeasure(&_ptu_frequency);
     PTU_HumidityDeselectREF1();
     PTU_DisableHumidityMeasure();
-    rawdata->humidity_ref1 = _ptu_frequency.FrequencyHz;
+    rawdata->humidity_ref1 = _ptu_frequency.PeriodTimer;
     // Main sensor humidity
     PTU_EnableHumidityMeasure();
     PTU_HumiditySelectSensor();
     PTU_FrequencyMeasure(&_ptu_frequency);
     PTU_HumidityDeselectSensor();
     PTU_DisableHumidityMeasure();
-    rawdata->humidity_sensor = _ptu_frequency.FrequencyHz;
+    rawdata->humidity_sensor = _ptu_frequency.PeriodTimer;
     // REF2 capacitor
     PTU_EnableHumidityMeasure();
     PTU_HumiditySelectREF2();
     PTU_FrequencyMeasure(&_ptu_frequency);
     PTU_HumidityDeselectREF2();
     PTU_DisableHumidityMeasure();
-    rawdata->humidity_ref2 = _ptu_frequency.FrequencyHz;
+    rawdata->humidity_ref2 = _ptu_frequency.PeriodTimer;
+}
+
+/**
+ * @brief PTU_CalculateData
+ * @param rawdata
+ * @param caldata
+ */
+void PTU_CalculateData(PTURAWData *rawdata, PTUCalculatedData *caldata, const PTUCalibrationData calibration) {
+    // Temperature sensor
+    // Temperature sensor gain
+    float temperature_sensor_gain = ((float)(rawdata->temperature_ref2)-(float)(rawdata->temperature_ref1))/(PTU_REFERENCE_RESISTOR2_OHM-PTU_REFERENCE_RESISTOR1_OHM);
+    // Temperature sensor offset
+    float temperature_sensor_offset = ((float)(rawdata->temperature_ref1)*PTU_REFERENCE_RESISTOR2_OHM-(float)(rawdata->temperature_ref2)*PTU_REFERENCE_RESISTOR1_OHM)/(float)((float)(rawdata->temperature_ref2)-(float)(rawdata->temperature_ref1));
+    // Rezistance of PT1000 sensor
+    float temperature_sensor_main = (float)(rawdata->temperature_sensor)/temperature_sensor_gain - temperature_sensor_offset;
+    // Calibration C0
+    float temperature_sensor_cal0 = temperature_sensor_main * calibration.cal_T1[0];
+    // Temperature sensor calculation with calibration
+    caldata->temperature_sensor = (PTU_CONSTANT_PT1000_A0 + PTU_CONSTANT_PT1000_A1*temperature_sensor_cal0 + PTU_CONSTANT_PT1000_A2*temperature_sensor_cal0*temperature_sensor_cal0 + calibration.cal_T1[1]) * (1.0f + calibration.cal_T1[2]);
+
+    // Temperature humidity
+    // Temperature humidity gain
+    temperature_sensor_gain = ((float)(rawdata->temperature_ref2)-(float)(rawdata->temperature_ref1))/(PTU_REFERENCE_RESISTOR2_OHM-PTU_REFERENCE_RESISTOR1_OHM);
+    // Temperature humidity offset
+    temperature_sensor_offset = ((float)(rawdata->temperature_ref1)*PTU_REFERENCE_RESISTOR2_OHM-(float)(rawdata->temperature_ref2)*PTU_REFERENCE_RESISTOR1_OHM)/(float)((float)(rawdata->temperature_ref2)-(float)(rawdata->temperature_ref1));
+    // Rezistance of PT1000 sensor
+    temperature_sensor_main = (float)(rawdata->temperature_humi)/temperature_sensor_gain - temperature_sensor_offset;
+    // Calibration C0
+    temperature_sensor_cal0 = temperature_sensor_main * calibration.cal_T2[0];
+    // Temperature humidity calculation with calibration
+    caldata->temperature_humi = (PTU_CONSTANT_PT1000_A0 + PTU_CONSTANT_PT1000_A1*temperature_sensor_cal0 + PTU_CONSTANT_PT1000_A2*temperature_sensor_cal0*temperature_sensor_cal0 + calibration.cal_T2[1]) * (1.0f + calibration.cal_T2[2]);
+
 }
