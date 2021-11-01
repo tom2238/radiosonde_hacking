@@ -25,6 +25,7 @@
 #include <libopencm3/stm32/f1/timer.h>
 // Another libraries
 #include <stdint.h>
+#include <math.h>
 #include "ptu_measure.h"
 #include "si4032.h"
 #include "utils.h"
@@ -56,7 +57,7 @@ static inline void PTU_HumidityDeselectREF2(void);
 static PTUFrequencyCounter _ptu_frequency;
 
 /**
- * @brief PTU_Init
+ * @brief PTU_Init Init PTU peripherals
  */
 void PTU_Init(void) {
     // Enable PTU pins clock
@@ -121,7 +122,7 @@ void PTU_Init(void) {
 }
 
 /**
- * @brief PTU_MeasureCounterInit
+ * @brief PTU_MeasureCounterInit Configure TIM2 as pulse counter
  */
 static inline void PTU_MeasureCounterInit(void) {
     // Input capture timer setup
@@ -162,7 +163,7 @@ static inline void PTU_MeasureCounterInit(void) {
 }
 
 /**
- * @brief PTU_FrequencyTimerInit
+ * @brief PTU_FrequencyTimerInit Configure TIM3 as stopwatch
  */
 static inline void PTU_FrequencyTimerInit(void) {
     // Frequency timer setup
@@ -187,7 +188,7 @@ static inline void PTU_FrequencyTimerInit(void) {
 }
 
 /**
- * @brief tim2_isr
+ * @brief tim2_isr TIM2 Interrupt routine
  */
 void tim2_isr(void) {
     if (timer_get_flag(PTU_MEAS_OUT_TIMER, TIM_SR_CC2IF)) {
@@ -204,7 +205,7 @@ void tim2_isr(void) {
 }
 
 /**
- * @brief tim3_isr
+ * @brief tim3_isr TIM3 Interrupt routine
  */
 void tim3_isr(void) {
     if(timer_get_flag(PTU_FREQUENCY_TIMER, TIM_SR_UIF)) {
@@ -214,22 +215,22 @@ void tim3_isr(void) {
 }
 
 /**
- * @brief PTU_EnableReferenceHeating
+ * @brief PTU_EnableReferenceHeating Enable reference heating via Si4032 radio
  */
 inline void PTU_EnableReferenceHeating(void) {
     Si4032_GPIOSet(SI4032_GPIO_PORT_1);
 }
 
 /**
- * @brief PTU_DisableReferenceHeating
+ * @brief PTU_DisableReferenceHeating Disable reference heating via Si4032 radio
  */
 inline void PTU_DisableReferenceHeating(void) {
     Si4032_GPIOClear(SI4032_GPIO_PORT_1);
 }
 
 /**
- * @brief PTU_FrequencyMeasure
- * @param fcounter
+ * @brief PTU_FrequencyMeasure Measure frequency of ring oscillator
+ * @param fcounter Pointer to PTUFrequencyCounter structure where to save data
  */
 static void PTU_FrequencyMeasure(PTUFrequencyCounter *fcounter) {
     // Timeout in ms
@@ -389,8 +390,8 @@ static inline void PTU_HumidityDeselectREF2(void) {
 }
 
 /**
- * @brief PTU_MeasureTemperature
- * @param rawdata
+ * @brief PTU_MeasureTemperature Measure RAW temperature data, REF1, humicap, main sensor, REF2
+ * @param rawdata Pointer to PTURAWData structure where to save RAW data
  */
 void PTU_MeasureTemperature(PTURAWData *rawdata) {
     // REF1 750 ohm resistor
@@ -424,8 +425,8 @@ void PTU_MeasureTemperature(PTURAWData *rawdata) {
 }
 
 /**
- * @brief PTU_HumidityMeasure
- * @param rawdata
+ * @brief PTU_HumidityMeasure Measure RAW humidity data, REF1, main sensor, REF2
+ * @param rawdata Pointer to PTURAWData structure where to save RAW data
  */
 void PTU_MeasureHumidity(PTURAWData *rawdata) {
     // REF1 capacitor
@@ -452,11 +453,15 @@ void PTU_MeasureHumidity(PTURAWData *rawdata) {
 }
 
 /**
- * @brief PTU_CalculateData
- * @param rawdata
- * @param caldata
+ * @brief PTU_CalculateData Calculate human readable values from RAW data
+ * @param rawdata Pointer to PTURAWData structure for reading RAW data
+ * @param caldata Pointer to PTUCalculatedData structure where to save calculated data
+ * @param calibration Constant calibration values for all sensors
  */
 void PTU_CalculateData(PTURAWData *rawdata, PTUCalculatedData *caldata, const PTUCalibrationData calibration) {
+    // Calculation reference:
+    // https://github.com/rs1729/RS/blob/master/demod/rs41dm_dft.c
+
     // Temperature sensor
     // Temperature sensor gain
     float temperature_sensor_gain = ((float)(rawdata->temperature_ref2)-(float)(rawdata->temperature_ref1))/(PTU_REFERENCE_RESISTOR2_OHM-PTU_REFERENCE_RESISTOR1_OHM);
@@ -481,4 +486,29 @@ void PTU_CalculateData(PTURAWData *rawdata, PTUCalculatedData *caldata, const PT
     // Temperature humidity calculation with calibration
     caldata->temperature_humi = (PTU_CONSTANT_PT1000_A0 + PTU_CONSTANT_PT1000_A1*temperature_sensor_cal0 + PTU_CONSTANT_PT1000_A2*temperature_sensor_cal0*temperature_sensor_cal0 + calibration.cal_T2[1]) * (1.0f + calibration.cal_T2[2]);
 
+    // Humidity sensor
+    // Humidity sensor raw humidity
+    float humidity_raw = ((float)(rawdata->humidity_sensor)-(float)(rawdata->humidity_ref1))/((float)(rawdata->humidity_ref2)-(float)(rawdata->humidity_ref1));
+    // Humidity sensor relative humidity
+    float humidity_relative = 100.0f * (humidity_raw*(PTU_CONSTANT_HUMICAP_A1/calibration.cal_H[0]) - PTU_CONSTANT_HUMICAP_A0);
+    // Humidity sensor empir. temperature compensation
+    humidity_relative += PTU_CONSTANT_HUMICAP_T0 - caldata->temperature_sensor/5.5;
+    // Humidity sensor empir. temperature compensation
+    if(caldata->temperature_sensor < PTU_CONSTANT_HUMICAP_T1) {
+        humidity_relative *= 1.0f + (PTU_CONSTANT_HUMICAP_T1 - caldata->temperature_sensor)/90.0;
+    }
+    if (humidity_relative < 0.0f) {
+        humidity_relative = 0.0f;
+    }
+    if (humidity_relative > 100.0f) {
+        humidity_relative = 100.0f;
+    }
+    if (caldata->temperature_sensor < -273.0) {
+        humidity_relative = -1.0f;
+    }
+    caldata->humidity_sensor = humidity_relative;
+
+    // Fast dew point calculation
+    temperature_sensor_gain = (PTU_CONSTANT_DEWPOINT_A0 * caldata->temperature_sensor)/(PTU_CONSTANT_DEWPOINT_A1 + caldata->temperature_sensor) + logf(caldata->humidity_sensor/100);
+    caldata->dew_point = (PTU_CONSTANT_DEWPOINT_A1 * temperature_sensor_gain)/(PTU_CONSTANT_DEWPOINT_A0 - temperature_sensor_gain);
 }

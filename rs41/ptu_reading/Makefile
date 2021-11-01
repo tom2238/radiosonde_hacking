@@ -22,6 +22,7 @@ BINARY = main
 # Include library path
 LIBRARY_DIR = ../libraries
 DEFS += -I$(LIBRARY_DIR)
+LDLIBS += -lm
 # Add library objects
 OBJS += $(LIBRARY_DIR)/utils.o
 OBJS += $(LIBRARY_DIR)/si4032.o

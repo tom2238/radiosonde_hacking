@@ -158,6 +158,12 @@ int main(void) {
         console_puts(" degC ");
         console_puts("Temperature humidity: ");
         console_print_float(calculated_ptu.temperature_humi);
+        console_puts(" degC ");
+        console_puts("Humidity sensor: ");
+        console_print_int((int)calculated_ptu.humidity_sensor);
+        console_puts(" % ");
+        console_puts("Dew point: ");
+        console_print_float(calculated_ptu.dew_point);
         console_puts(" degC\n");
 
         /* Blink the LED on the board. */

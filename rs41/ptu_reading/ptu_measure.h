@@ -72,6 +72,14 @@
 // Reference resistor values
 #define PTU_REFERENCE_RESISTOR1_OHM 750.0f
 #define PTU_REFERENCE_RESISTOR2_OHM 1100.0f
+// Humidity calculation constant
+#define PTU_CONSTANT_HUMICAP_A0 7.5f
+#define PTU_CONSTANT_HUMICAP_A1 350.0f
+#define PTU_CONSTANT_HUMICAP_T0 0.0f
+#define PTU_CONSTANT_HUMICAP_T1 -25.0f
+// Dew point calcilation constant
+#define PTU_CONSTANT_DEWPOINT_A0 17.271
+#define PTU_CONSTANT_DEWPOINT_A1 237.7
 
 // PTU stopwatch timer/counter states
 typedef enum {
@@ -105,6 +113,7 @@ typedef struct {
     float temperature_sensor;
     float temperature_humi;
     float humidity_sensor;
+    float dew_point;
 }PTUCalculatedData;
 
 // Calibration data
