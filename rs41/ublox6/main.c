@@ -139,6 +139,8 @@ int main(void) {
     uBlox6_GPSData gpsData;
     // Millis timer delay
     uint64_t millis_last = millis();
+    uint8_t is_gps_time_fix = 0;
+    uint16_t timeout;
 
     console_puts("Init done!\n");
 
@@ -158,6 +160,27 @@ int main(void) {
             // If not blinking with Green LED
             gpio_toggle(LED_GREEN_GPIO,LED_GREEN_PIN);
         }
+
+        // If is valid GPS week number and GPS time of week
+        if(!is_gps_time_fix) {
+            if((gpsData.navSolFlags & 0x0C) == 0x0C) {
+                // Turn off Red led if time is fixed
+                gpio_set(LED_RED_GPIO,LED_RED_PIN);
+                is_gps_time_fix = 1;
+                // Trying to implement: Attempting to synchronize packet sending at GPS time.
+                // Not working now
+                timeout = 1200;
+                Ublox6_ClearReceivedMsgCounter();
+                while(Ublox6_GetReceivedMsgCounter() == 4 && timeout-- > 0) {
+                    delay(1);
+                }
+                millis_last = millis() + 1000;
+            } else {
+                // If not blinking with Red LED
+                gpio_toggle(LED_RED_GPIO,LED_RED_PIN);
+            }
+        }
+
 
         console_print_int(gpsData.year);
         console_puts(".");
@@ -196,7 +219,6 @@ int main(void) {
         Frame_CalculateCRC16(&dataframe);
         Frame_XOR(&dataframe,0); // XORing NRZ frame
         // Preamble(40) and header(8) is added in Si4032
-        delay(630);
         Si4032_WriteShortPacket((((uint8_t*)&dataframe.value) + Frame_GetHeadSize()), Frame_GetUserLength()+Frame_GetCRCSize());
         // Clear watchdog timer
         iwdg_reset();

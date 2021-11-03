@@ -332,6 +332,7 @@ typedef struct {
     uint32_t pAcc;          // 3D Position Accuracy Estimate [- cm]
     uint16_t pDOP;          // Position DOP [0.01 -]
     uint32_t sAcc;          // Speed Accuracy Estimate [- cm/s]
+    uint8_t navSolFlags;    // NAV-SOL flags [- -]
 } uBlox6_GPSData;
 
 /* Decoder state */
@@ -369,6 +370,8 @@ typedef enum {
 // Public
 uint8_t Ublox6_Init(uBlox6_init_state init_state);
 int Ublox6_HandleByte(uint8_t data);
+uint8_t Ublox6_GetReceivedMsgCounter(void);
+void Ublox6_ClearReceivedMsgCounter(void);
 void Ublox6_GetLastData(uBlox6_GPSData *gpsEntry);
 void Ublox6_Poll(uint8_t msgClass, uint8_t msgID);
 
