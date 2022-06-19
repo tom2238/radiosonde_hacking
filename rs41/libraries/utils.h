@@ -69,5 +69,6 @@ void ftoa(float n, char* res, int afterpoint);
  */
 uint64_t millis(void);
 void delay(uint64_t duration);
+extern volatile uint8_t mcu_main_pulse_enable;
 
 #endif // UTILS_H

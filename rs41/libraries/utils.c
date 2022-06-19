@@ -25,6 +25,8 @@
 static void ftoa_reverse(char* str, int len);
 static int ftoa_intToStr(int x, char str[], int d);
 static int ipow(int base, int exp);
+// Systick 10ms pulse
+volatile uint8_t mcu_main_pulse_enable = 0;
 
 #ifdef __cplusplus
 extern "C"{
@@ -377,8 +379,14 @@ uint64_t millis(void) {
 // The full list of interrupt services routines that can be implemented is
 // listed in libopencm3/include/libopencm3/stm32/f0/nvic.h
 void sys_tick_handler(void) {
+    static uint8_t counter_10ms = 0;
     // Increment our monotonic clock
     _millis++;
+    counter_10ms++;
+    if(counter_10ms >= 10) {
+        mcu_main_pulse_enable = 1;
+        counter_10ms = 0;
+    }
 }
 
 // Delay a given number of milliseconds in a blocking manner
