@@ -52,6 +52,7 @@ static inline void PTU_HumiditySelectSensor(void);
 static inline void PTU_HumidityDeselectSensor(void);
 static inline void PTU_HumiditySelectREF2(void);
 static inline void PTU_HumidityDeselectREF2(void);
+static uint8_t PTU_FrequencyMeasureCycle(PTUFrequencyCounter *fcounter);
 
 // Frequency information
 static PTUFrequencyCounter _ptu_frequency;
@@ -511,4 +512,203 @@ void PTU_CalculateData(PTURAWData *rawdata, PTUCalculatedData *caldata, const PT
     // Fast dew point calculation
     temperature_sensor_gain = (PTU_CONSTANT_DEWPOINT_A0 * caldata->temperature_sensor)/(PTU_CONSTANT_DEWPOINT_A1 + caldata->temperature_sensor) + logf(caldata->humidity_sensor/100);
     caldata->dew_point = (PTU_CONSTANT_DEWPOINT_A1 * temperature_sensor_gain)/(PTU_CONSTANT_DEWPOINT_A0 - temperature_sensor_gain);
+}
+
+/**
+ * @brief PTU_MeasureCycle Measure RAW temperature data, REF1, humicap, main sensor, REF2, 10 ms cycle optimalisation
+ * @param rawdata Pointer to PTURAWData structure where to save RAW data
+ */
+void PTU_MeasureCycle(PTURAWData *rawdata, PTUCalculatedData *caldata, const PTUCalibrationData calibration) {
+    // State in machine
+    static uint8_t state = 0;
+    // Frequency measure state
+    static uint8_t freq_meas_state;
+
+    switch (state) {
+    // Measure REF1 750 ohm resistor
+    // Start
+    case 0:
+        PTU_EnableTemperatureMeasure();
+        PTU_TemperatureSelectREF1();
+        freq_meas_state = PTU_FrequencyMeasureCycle(&_ptu_frequency);
+        state = 1;
+        break;
+    // Measure frequency
+    case 1:
+        freq_meas_state = PTU_FrequencyMeasureCycle(&_ptu_frequency);
+        // Waiting for measure
+        switch (freq_meas_state) {
+        // Init or wait
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_INIT:
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_WAIT:
+            state = 1;
+            break;
+        // Success or timeout
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_SUCCESS:
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_TIMEOUT:
+            PTU_TemperatureDeselectREF1();
+            PTU_DisableTemperatureMeasure();
+            rawdata->temperature_ref1 = _ptu_frequency.PeriodTimer;
+            // Meas main sensor
+            PTU_EnableTemperatureMeasure();
+            PTU_TemperatureSelectSensor();
+            PTU_FrequencyMeasureCycle(&_ptu_frequency);
+            state = 2;
+            break;
+        default:
+            state = 0;
+            break;
+        }
+        break;
+    // Measure main temeprature sensor
+    case 2:
+        freq_meas_state = PTU_FrequencyMeasureCycle(&_ptu_frequency);
+        switch (freq_meas_state) {
+        // Init or wait
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_INIT:
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_WAIT:
+            state = 2;
+            break;
+        // Success or timeout
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_SUCCESS:
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_TIMEOUT:
+            PTU_TemperatureDeselectSensor();
+            PTU_DisableTemperatureMeasure();
+            rawdata->temperature_sensor = _ptu_frequency.PeriodTimer;
+            // Meas REF2
+            PTU_EnableTemperatureMeasure();
+            PTU_TemperatureSelectREF2();
+            freq_meas_state = PTU_FrequencyMeasureCycle(&_ptu_frequency);
+            state = 3;
+            break;
+        default:
+            state = 0;
+            break;
+        }
+        break;
+    // Measure REF2 1100 ohm resistor
+    case 3:
+        freq_meas_state = PTU_FrequencyMeasureCycle(&_ptu_frequency);
+        // Waiting for measure
+        switch (freq_meas_state) {
+        // Init or wait
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_INIT:
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_WAIT:
+            state = 3;
+            break;
+        // Success or timeout
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_SUCCESS:
+        case PTU_FREQUENCY_MEAS_CYCLE_RET_TIMEOUT:
+            PTU_TemperatureDeselectREF2();
+            PTU_DisableTemperatureMeasure();
+            rawdata->temperature_ref2 = _ptu_frequency.PeriodTimer;
+            state = 4;
+            break;
+        default:
+            state = 0;
+            break;
+        }
+        break;
+    // Calculate temperature
+    case 4:
+        PTU_CalculateTemperature(rawdata,caldata,calibration);
+        state = 0;
+        break;
+    default:
+        state = 0;
+        break;
+    }
+}
+
+/**
+ * @brief PTU_FrequencyMeasureCycle Measure frequency of ring oscillator, 10 ms cycle optimalisation
+ * @param fcounter Pointer to PTUFrequencyCounter structure where to save data
+ * @return Status
+ */
+
+static uint8_t PTU_FrequencyMeasureCycle(PTUFrequencyCounter *fcounter) {
+    // State in machine
+    static uint8_t state = 0;
+    // Timeout in 10*ms
+    static uint8_t timeout;
+    // Return status
+    uint8_t status_ret = PTU_FREQUENCY_MEAS_CYCLE_RET_INIT;
+    // State
+    switch (state) {
+    // Init state
+    case 0:
+        // Set timeout to 100ms
+        timeout = 10;
+        // Reset before measure
+        fcounter->State = PTU_FREQ_STATE_RUN;
+        fcounter->OverCapture = 0;
+        fcounter->Pulses = 0;
+        fcounter->PeriodTimer = 0;
+        fcounter->FrequencyHz = 0;
+        // Reset the counter. This will generate one extra overflow for next measurement.
+        // In case of nothing got counted, manually generate a reset to keep consistency.
+        timer_set_counter(PTU_FREQUENCY_TIMER,0);
+        // Enable the counter
+        timer_enable_counter(PTU_FREQUENCY_TIMER);
+        // Go to state
+        state = 1;
+        // Return state
+        status_ret = PTU_FREQUENCY_MEAS_CYCLE_RET_INIT;
+        break;
+    // Measure state
+    case 1:
+        // Wait for ticks or timeout
+        if(fcounter->Pulses <= PTU_FREQUENCY_TIMER_PULSE_LIMIT && timeout-- > 0) {
+            state = 1;
+            // Return state
+            status_ret = PTU_FREQUENCY_MEAS_CYCLE_RET_WAIT;
+        } else {
+            // Timeout, low frequency or short timeout
+            // Because if timeout reached, add one into timeout variable to get zero.
+            timeout++;
+            if(!timeout) {
+                fcounter->FrequencyHz = 0;
+                fcounter->PeriodTimer = 0;
+                // Return state
+                status_ret = PTU_FREQUENCY_MEAS_CYCLE_RET_TIMEOUT;
+            } else {
+                // Frequency is correct
+                fcounter->PeriodTimer += fcounter->OverCapture;
+                fcounter->FrequencyHz = (PTU_FREQUENCY_TIMER_CLOCK)/(fcounter->PeriodTimer/PTU_FREQUENCY_TIMER_PULSE_LIMIT);
+                // Return state
+                status_ret = PTU_FREQUENCY_MEAS_CYCLE_RET_SUCCESS;
+            }
+            // Goto state
+            state = 0;
+        }
+        break;
+    default:
+        state = 0;
+        break;
+    }
+    // Return frequency measure state
+    return status_ret;
+}
+
+/**
+ * @brief PTU_CalculateTemperature Calculate human readable values from RAW data
+ * @param rawdata Pointer to PTURAWData structure for reading RAW data
+ * @param caldata Pointer to PTUCalculatedData structure where to save calculated data
+ * @param calibration Constant calibration values for all sensors
+ */
+void PTU_CalculateTemperature(PTURAWData *rawdata, PTUCalculatedData *caldata, const PTUCalibrationData calibration) {
+    // Calculation reference:
+    // https://github.com/rs1729/RS/blob/master/demod/rs41dm_dft.c
+
+    // Temperature sensor
+    // Temperature sensor gain
+    float temperature_sensor_gain = ((float)(rawdata->temperature_ref2)-(float)(rawdata->temperature_ref1))/(PTU_REFERENCE_RESISTOR2_OHM-PTU_REFERENCE_RESISTOR1_OHM);
+    // Temperature sensor offset
+    float temperature_sensor_offset = ((float)(rawdata->temperature_ref1)*PTU_REFERENCE_RESISTOR2_OHM-(float)(rawdata->temperature_ref2)*PTU_REFERENCE_RESISTOR1_OHM)/(float)((float)(rawdata->temperature_ref2)-(float)(rawdata->temperature_ref1));
+    // Rezistance of PT1000 sensor
+    float temperature_sensor_main = (float)(rawdata->temperature_sensor)/temperature_sensor_gain - temperature_sensor_offset;
+    // Calibration C0
+    float temperature_sensor_cal0 = temperature_sensor_main * calibration.cal_T1[0];
+    // Temperature sensor calculation with calibration
+    caldata->temperature_sensor = (PTU_CONSTANT_PT1000_A0 + PTU_CONSTANT_PT1000_A1*temperature_sensor_cal0 + PTU_CONSTANT_PT1000_A2*temperature_sensor_cal0*temperature_sensor_cal0 + calibration.cal_T1[1]) * (1.0f + calibration.cal_T1[2]);
 }

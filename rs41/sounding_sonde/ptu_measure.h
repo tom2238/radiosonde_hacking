@@ -81,6 +81,12 @@
 #define PTU_CONSTANT_DEWPOINT_A0 17.271
 #define PTU_CONSTANT_DEWPOINT_A1 237.7
 
+// Frequency measure cycle return status
+#define PTU_FREQUENCY_MEAS_CYCLE_RET_INIT 0
+#define PTU_FREQUENCY_MEAS_CYCLE_RET_WAIT 1
+#define PTU_FREQUENCY_MEAS_CYCLE_RET_SUCCESS 2
+#define PTU_FREQUENCY_MEAS_CYCLE_RET_TIMEOUT 3
+
 // PTU stopwatch timer/counter states
 typedef enum {
     PTU_FREQ_STATE_IDLE = 1,
@@ -130,6 +136,8 @@ extern void PTU_EnableReferenceHeating(void);
 extern void PTU_DisableReferenceHeating(void);
 void PTU_MeasureTemperature(PTURAWData *rawdata);
 void PTU_MeasureHumidity(PTURAWData *rawdata);
-void PTU_CalculateData(PTURAWData *rawdata, PTUCalculatedData *caldata, PTUCalibrationData calibration);
+void PTU_CalculateData(PTURAWData *rawdata, PTUCalculatedData *caldata, const PTUCalibrationData calibration);
+void PTU_MeasureCycle(PTURAWData *rawdata, PTUCalculatedData *caldata, const PTUCalibrationData calibration);
+void PTU_CalculateTemperature(PTURAWData *rawdata, PTUCalculatedData *caldata, const PTUCalibrationData calibration);
 
 #endif // PTU_MEASURE_H

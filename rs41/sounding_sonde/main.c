@@ -58,6 +58,7 @@
 #include "utils.h"
 #include "si4032.h"
 #include "frame.h"
+#include "ptu_measure.h"
 
 // Functions
 void usart3_isr(void);
@@ -76,6 +77,17 @@ MCU_IO_state_t mcu_io_state;
 static FrameData dataframe;
 // GPS data
 static uBlox6_GPSData gpsData;
+// RAW PTU
+static PTURAWData raw_ptu;
+// Calculated PTU
+static PTUCalculatedData calculated_ptu;
+// Calibration data
+static const PTUCalibrationData calib_ptu = {.cal_T1 = {1.303953f, -0.095812f, 0.005378f}, .cal_H = {44.937469f, 5.023599f}, .cal_T2 = {1.265843f, 0.122289f, 0.005889f} };
+
+typedef union {
+    float float_val;
+    uint8_t float_bytes[4];
+} float_u;
 
 /**
  * @brief main Simply - It's main
@@ -143,6 +155,9 @@ int main(void) {
     // Confgure all other Ublox settings
     Ublox6_Init(UBLOX6_INIT_ALL);
 
+    // Init PTU measure
+    PTU_Init();
+
     // Turn off both LEDs
     gpio_set(LED_GREEN_GPIO,LED_GREEN_PIN);
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
@@ -151,10 +166,10 @@ int main(void) {
 
     // 62 max bytes for user data
     // 55 bytes for user data
-    // Head(8) + User(55) + CRC(2) + ECC(0)
-    Frame_Init(62,55,FRAME_MOD_NRZ);
+    // Head(8) + User(62) + CRC(2) + ECC(0)
+    Frame_Init(62,62,FRAME_MOD_NRZ);
 
-    // Short packet (<= 64), 4800 baud, 2400 Hz deviation, 57 bytes packet size, 80 nibbles
+    // Short packet (<= 64), 4800 baud, 2400 Hz deviation, 64 bytes packet size, 80 nibbles
     Si4032_PacketMode(PACKET_TYPE_SHORT,4800,2400,Frame_GetUserLength()+Frame_GetCRCSize(),80);
 
     console_puts("Init done!\n");
@@ -163,7 +178,7 @@ int main(void) {
     mcu_io_state.led_green = FALSE;
     mcu_io_state.led_red = FALSE;
     mcu_io_state.osc_1hz = FALSE;
-	while (1) {
+    while (1) {
         // 10 ms
         if(mcu_main_pulse_enable == TRUE) {
             // Clear watchdog timer
@@ -174,6 +189,8 @@ int main(void) {
             GPSdata_inputRung();
             // Generate pulses for LEDs
             Oscillator_inputRung();
+            // Measure PTU
+            PTU_MeasureCycle(&raw_ptu,&calculated_ptu,calib_ptu);
             // Control LEDs
             LEDsControl_processRung();
             // Write LEDs
@@ -181,9 +198,7 @@ int main(void) {
             // Write packet
             Radio_outputRung();
         }
-
 	}
-
 	return 0;
 }
 
@@ -276,14 +291,31 @@ static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps) {
     frame->value[53] = (frame_cnt >> 8) & 0xFF;
     frame->value[54] = (frame_cnt >> 0) & 0xFF;
     // Sonde ID
-    frame->value[55] = SondeID[0];
-    frame->value[56] = SondeID[1];
-    frame->value[57] = SondeID[2];
-    frame->value[58] = SondeID[3];
-    frame->value[59] = SondeID[4];
-    frame->value[60] = SondeID[5];
-    frame->value[61] = SondeID[6];
-    frame->value[62] = SondeID[7];
+    //frame->value[55] = SondeID[0];
+    //frame->value[56] = SondeID[1];
+    //frame->value[57] = SondeID[2];
+    //frame->value[58] = SondeID[3];
+    frame->value[55] = (raw_ptu.temperature_ref2 >> 0) & 0x000000FF;
+    frame->value[56] = (raw_ptu.temperature_ref2 >> 8) & 0x000000FF;
+    frame->value[57] = (raw_ptu.temperature_ref2 >> 16) & 0x000000FF;
+    frame->value[58] = (raw_ptu.temperature_ref2 >> 24) & 0x000000FF;
+    //frame->value[59] = SondeID[4];
+    //frame->value[60] = SondeID[5];
+    //frame->value[61] = SondeID[6];
+    //frame->value[62] = SondeID[7];
+    frame->value[59] = (raw_ptu.temperature_ref1 >> 0) & 0x000000FF;
+    frame->value[60] = (raw_ptu.temperature_ref1 >> 8) & 0x000000FF;
+    frame->value[61] = (raw_ptu.temperature_ref1 >> 16) & 0x000000FF;
+    frame->value[62] = (raw_ptu.temperature_ref1 >> 24) & 0x000000FF;
+    frame->value[63] = (raw_ptu.temperature_sensor >> 0) & 0x000000FF;
+    frame->value[64] = (raw_ptu.temperature_sensor >> 8) & 0x000000FF;
+    frame->value[65] = (raw_ptu.temperature_sensor >> 16) & 0x000000FF;
+    frame->value[66] = (raw_ptu.temperature_sensor >> 24) & 0x000000FF;
+    uint32_t temp_sen = (calculated_ptu.temperature_sensor + 100) * 100;
+    frame->value[66] = (temp_sen >> 0) & 0x000000FF;
+    frame->value[67] = (temp_sen >> 8) & 0x000000FF;
+    frame->value[68] = (temp_sen >> 16) & 0x000000FF;
+    frame->value[69] = (temp_sen >> 24) & 0x000000FF;
     frame_cnt++;
 }
 
