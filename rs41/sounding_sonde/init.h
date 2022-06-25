@@ -41,6 +41,7 @@
 #define FALSE 0
 
 void gpio_setup(void);
+void adc_setup(void);
 void usart_setup(void);
 void gps_usart_setup(uint32_t baudrate);
 void clock_setup(void);

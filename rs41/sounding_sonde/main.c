@@ -46,11 +46,13 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/stm32/iwdg.h>
+#include <libopencm3/stm32/adc.h>
 // STM32F100 libraries
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
 #include <libopencm3/stm32/f1/usart.h>
 #include <libopencm3/stm32/f1/iwdg.h>
+#include <libopencm3/stm32/f1/adc.h>
 // Another libraries
 #include <stdint.h>
 #include "init.h"
@@ -60,15 +62,31 @@
 #include "frame.h"
 #include "ptu_measure.h"
 
+#define TX_FREQUENCY_MHZ 433.120f
+#define TX_POWER_DBM 8
+#define TX_POWER_SI4032 SI4032_TX_POWER_8_DBM
+
 // Functions
 void usart3_isr(void);
 void usart1_isr(void);
-static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps);
+static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps, uint16_t voltage, float freq_mhz, uint8_t txpower);
 static inline void GPSdata_inputRung(void);
 static inline void Oscillator_inputRung(void);
+static inline void ADC_inputRung(void);
 static inline void LEDsControl_processRung(void);
 static inline void LEDs_outputRung(void);
 static inline void Radio_outputRung(void);
+
+// MCU supply voltage
+static uint16_t adc_supply = 0;
+static uint16_t adc_battery_val = 0;
+
+// Main.c static functions
+static uint16_t read_adc(uint8_t channel);
+static int read_adc_temperature(void);
+static uint16_t read_adc_supply(void);
+static uint16_t read_adc_voltage(uint8_t channel);
+
 // Data
 static const char SondeID[8] = {'R','H','1','3','1','2','D','2'};
 MCU_IO_state_t mcu_io_state;
@@ -83,6 +101,7 @@ static PTURAWData raw_ptu;
 static PTUCalculatedData calculated_ptu;
 // Calibration data
 static const PTUCalibrationData calib_ptu = {.cal_T1 = {1.303953f, -0.095812f, 0.005378f}, .cal_H = {44.937469f, 5.023599f}, .cal_T2 = {1.265843f, 0.122289f, 0.005889f} };
+
 
 typedef union {
     float float_val;
@@ -101,6 +120,8 @@ int main(void) {
     watchdog_setup();
     // LEDs GPIO
     gpio_setup();
+    // Setup ADC1 for temperaure, vref, and PA5 pin
+    adc_setup();
     // Systick for delay function
     systick_setup();
 
@@ -171,6 +192,8 @@ int main(void) {
 
     // Short packet (<= 64), 4800 baud, 2400 Hz deviation, 64 bytes packet size, 80 nibbles
     Si4032_PacketMode(PACKET_TYPE_SHORT,4800,2400,Frame_GetUserLength()+Frame_GetCRCSize(),80);
+    Si4032_SetTxPower(TX_POWER_SI4032);
+    Si4032_SetFrequency(TX_FREQUENCY_MHZ);
 
     console_puts("Init done!\n");
     Ublox6_ClearReceivedMsgCounter();
@@ -189,6 +212,8 @@ int main(void) {
             GPSdata_inputRung();
             // Generate pulses for LEDs
             Oscillator_inputRung();
+            // Read ADc
+            ADC_inputRung();
             // Measure PTU
             PTU_MeasureCycle(&raw_ptu,&calculated_ptu,calib_ptu);
             // Control LEDs
@@ -234,8 +259,8 @@ void usart1_isr(void) {
  * @param frame TX frame block
  * @param gps Current GPS data
  */
-static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps) {
-    // Frame user length is 55 bytes
+static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps, uint16_t voltage, float freq_mhz, uint8_t txpower) {
+    // Frame user length is 62 bytes
     static uint16_t frame_cnt = 0;
     // GPS TIME UTC
     frame->value[8] = (gps->year >> 24) & 0xFF;
@@ -283,39 +308,33 @@ static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps) {
     frame->value[46] = (gps->iTOW >> 0) & 0xFF;
     frame->value[47] = (gps->week >> 8) & 0xFF;
     frame->value[48] = (gps->week >> 0) & 0xFF;
-    frame->value[49] = (gps->pDOP >> 24) & 0xFF;
-    frame->value[50] = (gps->pDOP >> 16) & 0xFF;
-    frame->value[51] = (gps->pDOP >> 8) & 0xFF;
-    frame->value[52] = (gps->pDOP >> 0) & 0xFF;
-    // Frame count
-    frame->value[53] = (frame_cnt >> 8) & 0xFF;
-    frame->value[54] = (frame_cnt >> 0) & 0xFF;
-    // Sonde ID
-    //frame->value[55] = SondeID[0];
-    //frame->value[56] = SondeID[1];
-    //frame->value[57] = SondeID[2];
-    //frame->value[58] = SondeID[3];
-    frame->value[55] = (raw_ptu.temperature_ref2 >> 0) & 0x000000FF;
-    frame->value[56] = (raw_ptu.temperature_ref2 >> 8) & 0x000000FF;
-    frame->value[57] = (raw_ptu.temperature_ref2 >> 16) & 0x000000FF;
-    frame->value[58] = (raw_ptu.temperature_ref2 >> 24) & 0x000000FF;
-    //frame->value[59] = SondeID[4];
-    //frame->value[60] = SondeID[5];
-    //frame->value[61] = SondeID[6];
-    //frame->value[62] = SondeID[7];
-    frame->value[59] = (raw_ptu.temperature_ref1 >> 0) & 0x000000FF;
-    frame->value[60] = (raw_ptu.temperature_ref1 >> 8) & 0x000000FF;
-    frame->value[61] = (raw_ptu.temperature_ref1 >> 16) & 0x000000FF;
-    frame->value[62] = (raw_ptu.temperature_ref1 >> 24) & 0x000000FF;
-    frame->value[63] = (raw_ptu.temperature_sensor >> 0) & 0x000000FF;
-    frame->value[64] = (raw_ptu.temperature_sensor >> 8) & 0x000000FF;
-    frame->value[65] = (raw_ptu.temperature_sensor >> 16) & 0x000000FF;
-    frame->value[66] = (raw_ptu.temperature_sensor >> 24) & 0x000000FF;
+    // PTU, main temperature only
     uint32_t temp_sen = (calculated_ptu.temperature_sensor + 100) * 100;
-    frame->value[66] = (temp_sen >> 0) & 0x000000FF;
-    frame->value[67] = (temp_sen >> 8) & 0x000000FF;
-    frame->value[68] = (temp_sen >> 16) & 0x000000FF;
-    frame->value[69] = (temp_sen >> 24) & 0x000000FF;
+    frame->value[49] = (temp_sen >> 24) & 0x000000FF;
+    frame->value[50] = (temp_sen >> 16) & 0x000000FF;
+    frame->value[51] = (temp_sen >> 8) & 0x000000FF;
+    frame->value[52] = (temp_sen >> 0) & 0x000000FF;
+    // Voltage in mV -> V*10
+    frame->value[53] = (voltage/100);
+    // Sonde info
+    // Sonde ID
+    frame->value[54] = SondeID[0];
+    frame->value[55] = SondeID[1];
+    frame->value[56] = SondeID[2];
+    frame->value[57] = SondeID[3];
+    frame->value[58] = SondeID[4];
+    frame->value[59] = SondeID[5];
+    frame->value[60] = SondeID[6];
+    frame->value[61] = SondeID[7];
+    // Frame count
+    frame->value[62] = (frame_cnt >> 8) & 0xFF;
+    frame->value[63] = (frame_cnt >> 0) & 0xFF;
+    // Frequency
+    frame->value[64] = ((uint16_t)(freq_mhz * 100) >> 8) & 0x00FF;
+    frame->value[65] = ((uint16_t)(freq_mhz * 100) >> 0) & 0x00FF;
+    // Tx power
+    frame->value[66] = txpower;
+    // Increment frame
     frame_cnt++;
 }
 
@@ -347,6 +366,73 @@ static inline void Oscillator_inputRung(void) {
         timer = 0;
     } else {
         mcu_io_state.osc_1hz = FALSE;
+    }
+}
+
+/**
+ * @brief ADC_inputRung
+ */
+static inline void ADC_inputRung(void) {
+    // Statemachine
+    static uint8_t state = 0;
+    // temp adc_supply
+    static uint16_t adc_supply_inrung;
+    // temp adc_battery voltage
+    static uint16_t adc_battery_inrung;
+    switch (state) {
+    case 0:
+        // Read ADC supply voltage
+        adc_supply_inrung = read_adc_supply()/4;
+        state = 1;
+        break;
+    case 1:
+        // Read ADC supply voltage
+        adc_supply_inrung += read_adc_supply()/4;
+        state = 2;
+        break;
+    case 2:
+        // Read ADC supply voltage
+        adc_supply_inrung += read_adc_supply()/4;
+        state = 3;
+        break;
+    case 3:
+        // Read ADC supply voltage
+        adc_supply_inrung += read_adc_supply()/4;
+        adc_supply = adc_supply_inrung;
+        state = 4;
+        break;
+    case 4:
+        // Reading from PA5 pin, battery voltage
+        // Divide 4 to get average from 4 samples
+        // Multiply 2 to get correct value from voltage divider
+        adc_battery_inrung = 2*read_adc_voltage(VBAT_MON_ADC_CHANNEL)/4;
+        state = 5;
+        break;
+    case 5:
+        // Reading from PA5 pin, battery voltage
+        // Divide 4 to get average from 4 samples
+        // Multiply 2 to get correct value from voltage divider
+        adc_battery_inrung += 2*read_adc_voltage(VBAT_MON_ADC_CHANNEL)/4;
+        state = 6;
+        break;
+    case 6:
+        // Reading from PA5 pin, battery voltage
+        // Divide 4 to get average from 4 samples
+        // Multiply 2 to get correct value from voltage divider
+        adc_battery_inrung += 2*read_adc_voltage(VBAT_MON_ADC_CHANNEL)/4;
+        state = 7;
+        break;
+    case 7:
+        // Reading from PA5 pin, battery voltage
+        // Divide 4 to get average from 4 samples
+        // Multiply 2 to get correct value from voltage divider
+        adc_battery_inrung += 2*read_adc_voltage(VBAT_MON_ADC_CHANNEL)/4;
+        adc_battery_val = adc_battery_inrung;
+        state = 0;
+        break;
+    default:
+        state = 0;
+        break;
     }
 }
 
@@ -403,11 +489,43 @@ static inline void Radio_outputRung(void) {
         // New packet
         dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
         // Calculate new frame data
-        FrameCalculate(&dataframe,&gpsData);
+        FrameCalculate(&dataframe,&gpsData,adc_battery_val,TX_FREQUENCY_MHZ,TX_POWER_DBM);
         // Calculate CRC16(2)
         Frame_CalculateCRC16(&dataframe);
         Frame_XOR(&dataframe,0); // XORing NRZ frame
         // Preamble(40) and header(8) is added in Si4032
         Si4032_WriteShortPacket((((uint8_t*)&dataframe.value) + Frame_GetHeadSize()), Frame_GetUserLength()+Frame_GetCRCSize());
     }
+}
+
+// ADC reading function
+static uint16_t read_adc(uint8_t channel) {
+    adc_set_sample_time(ADC1, channel, ADC_SMPR_SMP_239DOT5CYC);
+    adc_set_regular_sequence(ADC1,1,&channel);
+    adc_start_conversion_direct(ADC1);
+    uint8_t timeout = 5;
+    while((!adc_eoc(ADC1)) && (timeout != 0)) {
+        delay(1);
+        timeout--;
+    };
+    return adc_read_regular(ADC1);
+}
+
+// ADC reading temperature
+static int read_adc_temperature(void) {
+    static const int v25 = 141; // 1.41 volt at 25 degC
+    int vtemp;
+    vtemp = (int)read_adc(ADC_CHANNEL_TEMP) * adc_supply/ 4095;
+    return (v25 - vtemp) / 45 + 2500;
+}
+
+// Read MCU supply voltage
+static uint16_t read_adc_supply(void) {
+    // STM32F100 ADC Vref is 1200 mV
+    return 1200 * 4095/read_adc(ADC_CHANNEL_VREF); // in milivolts
+}
+
+// Return voltage from ADC channel
+static uint16_t read_adc_voltage(uint8_t channel) {
+    return read_adc(channel) * adc_supply/4095;
 }
