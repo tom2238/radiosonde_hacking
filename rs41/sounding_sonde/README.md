@@ -31,6 +31,11 @@ RS41 project with Si4032 + Ublox G6010 GPS + PTU + battery measure
 [850] (RH1312D2) Sa 2022-06-25 12:17:46.001 (W 2215)  lat: 48.9091392  lon: 17.0386496  alt: 195.51  vH: 0.0  v3D: 0.0  D: 190.3  vV: 0.0  numSV: 8  Tm: 21.4  vBat: 4.9  freq: 433.120  txPower: 8
 ```
 
+* For habitat:
+```
+$$RH1312D2,1345,13:22:36,48.9089312,17.0381536,150,1.6,-100.0,2.9,183,3.2,5,433.120 MHz https://github.com/tom2238/radiosonde_hacking/tree/main/rs41/sounding_sonde*f56b
+```
+
 ### Packet payload
 * **GPS** 
 * Year(4), Month(1), Day(1), Hour(1), Min(1), Sec(1), gpsFix(1), numSV(1), lon(4), lat(4), hMSL(4), speed(4), gSpeed(4), heading(4), iTOW(4), week(2)
@@ -73,7 +78,7 @@ RS41 project with Si4032 + Ublox G6010 GPS + PTU + battery measure
 | `[0x13]` | int32 | `[0x0A27E42B]` | 170386475 | GPS longtitude * 1e-7 [deg] |
 | `[0x17]` | int32 | `[0x1D26F147]` | 489091399 | GPS latitude * 1e-7 [deg] |
 | `[0x1B]` | int32 | `[0x0002FBFD]` | 195581 | GPS altitude [mm] above sea level |
-| `[0x1F]` | uint32 | `[0x00000003]` | 3 | GPS speed 3D [cm/s] |
+| `[0x1F]` | uint32 | `[0x00000003]` | 3 | GPS Down velocity component [cm/s] |
 | `[0x23]` | uint32 | `[0x00000001]` | 1 | GPS ground speed [cm/s] |
 | `[0x27]` | uint32 | `[0x01226220]` | 19030560 | GPS heading * 1e-5 [deg] |
 | `[0x2B]` | uint32 | `[0x2189D0C0]` | 562680000 | GPS time of week [ms] |
@@ -99,9 +104,13 @@ RS41 project with Si4032 + Ublox G6010 GPS + PTU + battery measure
 
 * TODO:
 * Configuration over USART3
+* Turn off by button
 
 ## Decoder setup
 * nrz-audio-modem is used
 * NRZ coding, 62 byte packet length, 4800 baud rate, Vaisala RS41 sounding print mode (-P 3)
 * 'sox -t pulseaudio default -t wav - 2>/dev/null | ./decoder -i - -L 62 -b 4800 -P 3'
+
+## Habitat upload (test)
+* 'sox -t pulseaudio default -t wav - 2>/dev/null | ./decoder -i - -L 62 -b 4800 -P 3 | ./habitat_upload'
 

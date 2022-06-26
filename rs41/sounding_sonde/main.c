@@ -289,10 +289,10 @@ static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps, uint16_t volta
     frame->value[29] = (gps->hMSL >> 8) & 0xFF;
     frame->value[30] = (gps->hMSL >> 0) & 0xFF;
     // GPS NAV VELNED
-    frame->value[31] = (gps->speed >> 24) & 0xFF;
-    frame->value[32] = (gps->speed >> 16) & 0xFF;
-    frame->value[33] = (gps->speed >> 8) & 0xFF;
-    frame->value[34] = (gps->speed >> 0) & 0xFF;
+    frame->value[31] = (gps->velD >> 24) & 0xFF;
+    frame->value[32] = (gps->velD >> 16) & 0xFF;
+    frame->value[33] = (gps->velD >> 8) & 0xFF;
+    frame->value[34] = (gps->velD >> 0) & 0xFF;
     frame->value[35] = (gps->gSpeed >> 24) & 0xFF;
     frame->value[36] = (gps->gSpeed >> 16) & 0xFF;
     frame->value[37] = (gps->gSpeed >> 8) & 0xFF;
