@@ -422,6 +422,7 @@ int Ublox6_HandleByte(uint8_t data) {
                 _current_GPSData.gSpeed = packet->data.navvelned.gSpeed;
                 _current_GPSData.heading = packet->data.navvelned.heading;
                 _current_GPSData.sAcc = packet->data.navvelned.sAcc;
+                _current_GPSData.velD = packet->data.navvelned.velD;
                 _gps_message_received++;
                 //console_putc('V'); // Debug info
                 break;

@@ -333,6 +333,7 @@ typedef struct {
     uint16_t pDOP;          // Position DOP [0.01 -]
     uint32_t sAcc;          // Speed Accuracy Estimate [- cm/s]
     uint8_t navSolFlags;    // NAV-SOL flags [- -]
+    int32_t velD;           // Down velocity component in NED [- cm/s]
     uint8_t fullPacketFlag; // Information flag about full message received
 } uBlox6_GPSData;
 
