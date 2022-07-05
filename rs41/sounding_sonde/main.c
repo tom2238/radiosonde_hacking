@@ -73,6 +73,7 @@ static void FrameCalculate(FrameData *frame, uBlox6_GPSData *gps, uint16_t volta
 static inline void GPSdata_inputRung(void);
 static inline void Oscillator_inputRung(void);
 static inline void ADC_inputRung(void);
+static inline void TurnOffButton_inputRung(void);
 static inline void LEDsControl_processRung(void);
 static inline void LEDs_outputRung(void);
 static inline void Radio_outputRung(void);
@@ -101,12 +102,6 @@ static PTURAWData raw_ptu;
 static PTUCalculatedData calculated_ptu;
 // Calibration data
 static const PTUCalibrationData calib_ptu = {.cal_T1 = {1.303953f, -0.095812f, 0.005378f}, .cal_H = {44.937469f, 5.023599f}, .cal_T2 = {1.265843f, 0.122289f, 0.005889f} };
-
-
-typedef union {
-    float float_val;
-    uint8_t float_bytes[4];
-} float_u;
 
 /**
  * @brief main Simply - It's main
@@ -184,7 +179,6 @@ int main(void) {
     gpio_set(LED_RED_GPIO,LED_RED_PIN);
     delay(500);
 
-
     // 62 max bytes for user data
     // 55 bytes for user data
     // Head(8) + User(62) + CRC(2) + ECC(0)
@@ -195,12 +189,14 @@ int main(void) {
     Si4032_SetTxPower(TX_POWER_SI4032);
     Si4032_SetFrequency(TX_FREQUENCY_MHZ);
 
-    console_puts("Init done!\n");
     Ublox6_ClearReceivedMsgCounter();
     mcu_io_state.gpsPulse = FALSE;
     mcu_io_state.led_green = FALSE;
     mcu_io_state.led_red = FALSE;
     mcu_io_state.osc_1hz = FALSE;
+
+    console_puts("Init done!\n");
+
     while (1) {
         // 10 ms
         if(mcu_main_pulse_enable == TRUE) {
@@ -214,6 +210,8 @@ int main(void) {
             Oscillator_inputRung();
             // Read ADc
             ADC_inputRung();
+            // Turn off button
+            TurnOffButton_inputRung();
             // Measure PTU
             PTU_MeasureCycle(&raw_ptu,&calculated_ptu,calib_ptu);
             // Control LEDs
@@ -437,6 +435,61 @@ static inline void ADC_inputRung(void) {
 }
 
 /**
+ * @brief Button_inputRung
+ */
+static inline void TurnOffButton_inputRung(void) {
+    // Timer
+    static uint8_t time = 0;
+    // Shutdown flag
+    static uint8_t shutdown = FALSE;
+    uint16_t current_value;
+    // Press status
+    static uint8_t button_pressed = 0;
+    time++;
+    // Every 100 ms
+    if(time >= 10) {
+        time = 0;
+        // 35.7 kOhm resistor divider 1:1
+        current_value = read_adc_voltage(PBUT_MON_ADC_CHANNEL)*2;
+        // current_value -> button value
+        // adc_battery_val -> battery voltage
+        // if button is pressed -> battery voltage appears on button pin
+        // 100 mV is some voltage diference
+        if ((current_value > (adc_battery_val - 100))) {
+            button_pressed++;
+            // After 10 success, 1 second
+            if (button_pressed >= 10) {
+                shutdown = true;
+            }
+        } else {
+            // Shutdown system
+            if (shutdown) {
+                // New packet
+                dataframe = Frame_NewData(Frame_GetUserLength() + Frame_GetHeadSize() + Frame_GetECCSize() + Frame_GetCRCSize(), Frame_GetCoding());
+                // Beep in frame
+                for(button_pressed=0;button_pressed<dataframe.length;button_pressed++) {
+                    if((button_pressed & 0x01) == 0) {
+                        dataframe.value[button_pressed] = 0xAA;
+                    } else {
+                        dataframe.value[button_pressed] = 0xCC;
+                    }
+
+                }
+                // Preamble(40) and header(8) is added in Si4032
+                Si4032_WriteShortPacket((((uint8_t*)&dataframe.value) + Frame_GetHeadSize()), Frame_GetUserLength()+Frame_GetCRCSize());
+                delay(100);
+                Si4032_WriteShortPacket((((uint8_t*)&dataframe.value) + Frame_GetHeadSize()), Frame_GetUserLength()+Frame_GetCRCSize());
+                delay(100);
+                Si4032_WriteShortPacket((((uint8_t*)&dataframe.value) + Frame_GetHeadSize()), Frame_GetUserLength()+Frame_GetCRCSize());
+                delay(100);
+                gpio_set(SHUTDOWN_GPIO, SHUTDOWN_PIN);
+            }
+            button_pressed = 0;
+        }
+    }
+}
+
+/**
  * @brief LEDsControl_processRung Set LEDs states based on GPS data
  */
 static inline void LEDsControl_processRung(void) {
@@ -503,7 +556,7 @@ static uint16_t read_adc(uint8_t channel) {
     adc_set_sample_time(ADC1, channel, ADC_SMPR_SMP_239DOT5CYC);
     adc_set_regular_sequence(ADC1,1,&channel);
     adc_start_conversion_direct(ADC1);
-    uint8_t timeout = 5;
+    uint8_t timeout = 4;
     while((!adc_eoc(ADC1)) && (timeout != 0)) {
         delay(1);
         timeout--;

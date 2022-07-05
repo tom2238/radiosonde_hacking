@@ -36,6 +36,17 @@
 #define VBAT_MON_RCC RCC_GPIOA
 #define VBAT_MON_ADC_CHANNEL ADC_CHANNEL5
 
+// Vaisala RS41 press button detect
+#define PBUT_MON_GPIO GPIOA
+#define PBUT_MON_PIN GPIO6
+#define PBUT_MON_RCC RCC_GPIOA
+#define PBUT_MON_ADC_CHANNEL ADC_CHANNEL6
+
+// Shudown output pin
+#define SHUTDOWN_GPIO GPIOA
+#define SHUTDOWN_PIN GPIO12
+#define SHUTDOWN_RCC RCC_GPIOA
+
 // Bool logic
 #define TRUE 1
 #define FALSE 0

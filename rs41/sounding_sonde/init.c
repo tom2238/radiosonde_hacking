@@ -41,10 +41,12 @@ void gpio_setup(void) {
     /* Enable GPIO RCC clock. */
     rcc_periph_clock_enable(LED_GREEN_RCC);
     rcc_periph_clock_enable(LED_RED_RCC);
+    rcc_periph_clock_enable(SHUTDOWN_RCC);
 
     /* Set LED_PIN to 'output push-pull'. */
     gpio_set_mode(LED_GREEN_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, LED_GREEN_PIN);
     gpio_set_mode(LED_RED_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, LED_RED_PIN);
+    gpio_set_mode(SHUTDOWN_GPIO, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, SHUTDOWN_PIN);
 }
 
 void adc_setup(void) {
@@ -52,6 +54,11 @@ void adc_setup(void) {
     rcc_periph_clock_enable(VBAT_MON_RCC);
     // Analog input pin, PA5, battery voltage measure
     gpio_set_mode(VBAT_MON_GPIO, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, VBAT_MON_PIN);
+    // ADC0 setup clock
+    rcc_periph_clock_enable(PBUT_MON_RCC);
+    // Analog input pin, PA6, button press detect
+    gpio_set_mode(PBUT_MON_GPIO, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, PBUT_MON_PIN);
+
     // Initialize ADC
     rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_ADC1EN);
     adc_power_off(ADC1);
