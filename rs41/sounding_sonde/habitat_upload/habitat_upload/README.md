@@ -19,7 +19,8 @@ Usage: ./habitat_upload -L lat -l lon -C callsign -r radio -a antenna -c comment
 ```
 
 ## Habitat upload
-* 
-```sox -t pulseaudio default -t wav - 2>/dev/null | ./decoder -i - -L 62 -b 4800 -P 3 | ./habitat_upload -L "$LATITUDE" -l "$LONGTITUDE" -C "$CALLSIGN" -r "$RADIO" -a "$ANTENNA" -c "$COMMENT" -P $STATION_RATIO
+* All parameters are requied.
+```
+sox -t pulseaudio default -t wav - 2>/dev/null | ./decoder -i - -L 62 -b 4800 -P 3 | ./habitat_upload -L "$LATITUDE" -l "$LONGTITUDE" -C "$CALLSIGN" -r "$RADIO" -a "$ANTENNA" -c "$COMMENT" -P $STATION_RATIO
 ```
 
