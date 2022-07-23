@@ -5,11 +5,12 @@ RS41 project with Si4032 + Ublox G6010 GPS + PTU + battery measure
 * XDATA USART3 baud rate is 38400 bps
 * GPS USART1 baud rate is 38400 bps
 * Default transmitting frequency is 433.120 MHz
-* Output power is 8 dBm (6.30 mW)
+* Output power is 11 dBm (12.60 mW)
 * GFSK modulation, FIFO mode
 * Transmit short packet (<= 64 bytes)
 * Send radio packet every second
-* TX sending is locked on GPS (under test)
+* TX sending is locked on GPS (under test), maybe works.
+* Turn off by button
 
 ## GPS configuration
 * Baud rate is 38400 bps, using binary UBX protocol
@@ -104,13 +105,16 @@ $$RH1312D2,1345,13:22:36,48.9089312,17.0381536,150,1.6,-100.0,2.9,183,3.2,5,433.
 
 * TODO:
 * Configuration over USART3
-* Turn off by button
 
 ## Decoder setup
 * nrz-audio-modem is used
 * NRZ coding, 62 byte packet length, 4800 baud rate, Vaisala RS41 sounding print mode (-P 3)
 * 'sox -t pulseaudio default -t wav - 2>/dev/null | ./decoder -i - -L 62 -b 4800 -P 3'
+* Output from NRZ decoder is without comment and CRC.
+* Comment and CRC are added in habitat_upload
 
 ## Habitat upload (test)
-* 'sox -t pulseaudio default -t wav - 2>/dev/null | ./decoder -i - -L 62 -b 4800 -P 3 | ./habitat_upload'
+* Uploading to http://habitat.habhub.org/. Software in ./habitat_upload/habitat_upload directory.
+* Reading payload content from stdin (output from nrz-audio-modem).
+* './sounding_sonde.sh'
 

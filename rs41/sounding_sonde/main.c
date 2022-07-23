@@ -63,8 +63,8 @@
 #include "ptu_measure.h"
 
 #define TX_FREQUENCY_MHZ 433.120f
-#define TX_POWER_DBM 8
-#define TX_POWER_SI4032 SI4032_TX_POWER_8_DBM
+#define TX_POWER_DBM 11
+#define TX_POWER_SI4032 SI4032_TX_POWER_11_DBM
 
 // Functions
 void usart3_isr(void);
@@ -208,7 +208,7 @@ int main(void) {
             GPSdata_inputRung();
             // Generate pulses for LEDs
             Oscillator_inputRung();
-            // Read ADc
+            // Read ADC
             ADC_inputRung();
             // Turn off button
             TurnOffButton_inputRung();
