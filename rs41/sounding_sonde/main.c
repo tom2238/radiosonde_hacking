@@ -89,7 +89,7 @@ static uint16_t read_adc_supply(void);
 static uint16_t read_adc_voltage(uint8_t channel);
 
 // Data
-static const char SondeID[8] = {'R','H','1','3','1','2','D','2'};
+static const char SondeID[8] = {'P','H','1','E','A','C','8','F'};
 MCU_IO_state_t mcu_io_state;
 // Frame init
 // FSK frame
