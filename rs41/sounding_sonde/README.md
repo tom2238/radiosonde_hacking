@@ -12,6 +12,9 @@ RS41 project with Si4032 + Ublox G6010 GPS + PTU + battery measure
 * TX sending is locked on GPS (under test), maybe works.
 * Turn off by button
 
+## Launch
+* See launch/README.md file
+
 ## GPS configuration
 * Baud rate is 38400 bps, using binary UBX protocol
 * 1 Hz navigation rate
@@ -117,15 +120,3 @@ $$RH1312D2,1345,13:22:36,48.9089312,17.0381536,150,1.6,-100.0,2.9,183,3.2,5,433.
 * Uploading to http://habitat.habhub.org/. Software in ./habitat_upload/habitat_upload directory.
 * Reading payload content from stdin (output from nrz-audio-modem).
 * './sounding_sonde.sh'
-
-# Launch
-* At 12.8.2022 17:09 UTC
-* From JN88MV
-![Habhub](launched_sonde_ph1eac8f.png?raw=true "Habhub path")
-* TODO: Add more pictures
-
-# End
-* At 12.8.2022 19:45 UTC
-* Low signal strength, but still working. 
-* Landed position unknown.
-* Send info to: t.dubina (at) volny (dot) cz
