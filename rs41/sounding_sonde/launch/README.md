@@ -27,4 +27,4 @@
 * Heading
 * Battery
 * Satellites
-[Graphs](graphs_PH1EAC8F.pdf)
+* [Graphs](graphs_PH1EAC8F.pdf)
