@@ -1,6 +1,9 @@
 # Launch 1
 * Information send to: t.dubina (at) volny (dot) cz
 
+## Sonde + balloon
+![Sonde](sonde_before_launch.jpg?raw=true "Sonde")
+
 ## Start
 * At 12.8.2022 17:09 UTC
 * From JN88MV
@@ -16,3 +19,12 @@
 * Low signal strength, but still working. 
 * Landed position unknown.
 
+## Graphs
+* Altitude
+* Temperature external
+* Wind finding
+* Climbing
+* Heading
+* Battery
+* Satellites
+[Graphs](graphs_PH1EAC8F.pdf)
