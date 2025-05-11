@@ -19,15 +19,21 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Connect all
 
+    // Buttons config
     ui->PB_stop->setEnabled(false);
     ui->PB_start->setEnabled(true);
+
+    // Load settings
+    LoadSettings();
 }
 
 /**
  * @brief MainWindow::~MainWindow
  */
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
+    // Save settings
+    SaveSettings();
+    // Delete UI
     delete ui;
 }
 
@@ -61,8 +67,17 @@ void MainWindow::on_PB_start_clicked() {
     mInputBuffer.open(QBuffer::ReadWrite);
     mAudioIn->start(&mInputBuffer);
     // Start
+    // Buttons
     ui->PB_stop->setEnabled(true);
     ui->PB_start->setEnabled(false);
+    // Setup
+    ui->CB_InputAudioDevice->setEnabled(false);
+    ui->LE_callsign->setEnabled(false);
+    ui->LE_GS_lat->setEnabled(false);
+    ui->LE_GS_lon->setEnabled(false);
+    ui->LE_GS_antenna->setEnabled(false);
+    ui->LE_GS_comment->setEnabled(false);
+    ui->LE_GS_radioType->setEnabled(false);
 }
 
 /**
@@ -110,8 +125,17 @@ void MainWindow::on_PB_stop_clicked() {
     // Stop
     mAudioIn->stop();
     mInputBuffer.close();
+    // Button
     ui->PB_stop->setEnabled(false);
     ui->PB_start->setEnabled(true);
+    // Setup
+    ui->CB_InputAudioDevice->setEnabled(true);
+    ui->LE_callsign->setEnabled(true);
+    ui->LE_GS_lat->setEnabled(true);
+    ui->LE_GS_lon->setEnabled(true);
+    ui->LE_GS_antenna->setEnabled(true);
+    ui->LE_GS_comment->setEnabled(true);
+    ui->LE_GS_radioType->setEnabled(true);
 }
 
 /**
@@ -124,4 +148,48 @@ void MainWindow::RefreshInputAudioDevices(void) {
     for (QAudioDeviceInfo d : inputDevices) {
         ui->CB_InputAudioDevice->addItem(d.deviceName(),QVariant::fromValue(d));
     }
+}
+
+/**
+ * @brief MainWindow::LoadSettings
+ */
+void MainWindow::LoadSettings(void) {
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    // Station
+    ui->LE_callsign->setText(application_setting.value("Station/Callsign","N0CALL").toString());
+    ui->LE_GS_antenna->setText(application_setting.value("Station/Antenna","Ground plane").toString());
+    ui->LE_GS_lat->setText(application_setting.value("Station/Latitude","17.0000").toString());
+    ui->LE_GS_lon->setText(application_setting.value("Station/Longitude","49.0000").toString());
+    ui->LE_GS_comment->setText(application_setting.value("Station/Comment","Receiver test").toString());
+    ui->LE_GS_radioType->setText(application_setting.value("Station/Radio","RTL-SDR").toString());
+    // Feed
+    bool aprs_en = application_setting.value("Feed/APRS","false").toBool();
+    bool habhub_en = application_setting.value("Feed/HabHub","false").toBool();
+    if(aprs_en) {
+        ui->CX_aprsEnable->setCheckState(Qt::CheckState::Checked);
+    } else {
+        ui->CX_aprsEnable->setCheckState(Qt::CheckState::Unchecked);
+    }
+    if(habhub_en) {
+        ui->CX_habhubEnable->setCheckState(Qt::CheckState::Checked);
+    } else {
+        ui->CX_habhubEnable->setCheckState(Qt::CheckState::Unchecked);
+    }
+}
+
+/**
+ * @brief MainWindow::SaveSettings
+ */
+void MainWindow::SaveSettings(void) {
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    // Station
+    application_setting.setValue("Station/Callsign",ui->LE_callsign->text());
+    application_setting.setValue("Station/Antenna",ui->LE_GS_antenna->text());
+    application_setting.setValue("Station/Latitude",ui->LE_GS_lat->text());
+    application_setting.setValue("Station/Longitude",ui->LE_GS_lon->text());
+    application_setting.setValue("Station/Comment",ui->LE_GS_comment->text());
+    application_setting.setValue("Station/Radio",ui->LE_GS_radioType->text());
+    // Feed
+    application_setting.setValue("Feed/APRS",ui->CX_aprsEnable->isChecked());
+    application_setting.setValue("Feed/HabHub",ui->CX_habhubEnable->isChecked());
 }

@@ -41,5 +41,7 @@ private:
     QBuffer  mInputBuffer;
     // funcs
     void RefreshInputAudioDevices(void);
+    void LoadSettings(void);
+    void SaveSettings(void);
 };
 #endif // MAINWINDOW_H
