@@ -24,9 +24,6 @@
 #define CRC_SIZE 2
 // Reed Solomon ECC size in bytes, default value
 #define ECC_SIZE 0
-// Used frame modulation
-#define FRAME_MOD_NRZ 0x1
-#define FRAME_MOD_MAN 0x2
 // Default frame lenght including HEAD + DATA + ECC + CRC
 #define FRAME_DEFAULT_LEN 256
 
@@ -44,13 +41,21 @@ typedef struct {
   unsigned char modulation;
 }FrameHead;
 
+// Used frame modulation
+typedef enum {
+    FRAME_MOD_NRZ = 0x01,
+    FRAME_MOD_MAN = 0x02
+}FrameModulation;
+
 class AMFrame
 {
 public:
     AMFrame(uint16_t max_msg_size, uint16_t max_chunk_size, uint16_t max_rs_symbols, uint8_t *result_stat);
+    AMFrame(void);
     ~AMFrame(void);
-    FrameData NewFrameData(int frame_length, unsigned char modulation);
-    FrameHead NewFrameHead(unsigned char modulation);
+    int InitSSF(uint16_t max_msg_size, uint16_t max_chunk_size, uint16_t max_rs_symbols);
+    FrameData NewFrameData(int frame_length, FrameModulation modulation);
+    FrameHead NewFrameHead(FrameModulation modulation);
     void IncHeadPos(FrameHead *incpos);
     int FrameHeadCompare(FrameHead head);
     void PrintFrameData(FrameData frame, int ecc_size_bytes);
@@ -68,10 +73,10 @@ public:
     uint8_t CheckRSLimit(uint16_t msg_len, uint16_t parity_len);
     void RSEncode(FrameData *frame);
     void RSDecode(FrameData *frame);
+    int Bits2Byte(char bits[]);
 
 private:
-    int Bits2Byte(char bits[]);
-    SSFRS *fec_rs_object;
+    SSFRS *fec_rs_object = nullptr;
 };
 
 #endif // AMFRAME_H

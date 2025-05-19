@@ -25,6 +25,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Load settings
     LoadSettings();
+
+
 }
 
 /**
@@ -53,6 +55,13 @@ void MainWindow::on_PB_start_clicked() {
     format.setCodec("audio/pcm");
     format.setSampleSize(16);
 
+    // Init decoder
+    if(frame_decoder.Init(false,false,false,format,4800,40,FRAME_MOD_NRZ,1)) {
+        // Invalid config
+        on_PB_stop_clicked();
+        return;
+    }
+
     if (mAudioIn) {
         delete mAudioIn;
     }
@@ -63,6 +72,9 @@ void MainWindow::on_PB_start_clicked() {
 
     connect(mAudioIn, &QAudioInput::notify,this, &MainWindow::processAudioIn);
     connect(mAudioIn, &QAudioInput::stateChanged,this, &MainWindow::stateChangeAudioIn);
+
+    // Init frame and head buffer
+
 
     mInputBuffer.open(QBuffer::ReadWrite);
     mAudioIn->start(&mInputBuffer);
@@ -86,6 +98,7 @@ void MainWindow::on_PB_start_clicked() {
 void MainWindow::processAudioIn() {
     mInputBuffer.seek(0);
     QByteArray ba = mInputBuffer.readAll();
+    int sample_byte;
 
 
     int num_samples = ba.length() / 2;
@@ -96,12 +109,13 @@ void MainWindow::processAudioIn() {
         s |= static_cast<int16_t>(ba.at(b_pos++) & 0xFF) << 8;
         //qDebug() << QString::number(s);
         if (s != 0) {
-            // TODO: Read byte
-            //mSamples.append((static_cast<double>(s)) / 32768.0 );
+            sample_byte = s;
         } else {
-            // TODO: Read byte
-            //mSamples.append(0);
+            sample_byte = 0;
         }
+        // TODO: Read byte
+        frame_decoder.ReadAudioSample(sample_byte);
+
     }
     qDebug() << "Audio notify size: " << mInputBuffer.size();
 
@@ -123,7 +137,9 @@ void MainWindow::stateChangeAudioIn(QAudio::State s) {
  */
 void MainWindow::on_PB_stop_clicked() {
     // Stop
-    mAudioIn->stop();
+    if (mAudioIn) {
+        mAudioIn->stop();
+    }
     mInputBuffer.close();
     // Button
     ui->PB_stop->setEnabled(false);

@@ -12,11 +12,26 @@ AMFrame::AMFrame(uint16_t max_msg_size, uint16_t max_chunk_size, uint16_t max_rs
     fec_rs_object = new SSFRS(max_msg_size,max_chunk_size,max_rs_symbols,result_stat);
 }
 
+AMFrame::AMFrame(void) {
+    if(fec_rs_object) {
+        delete fec_rs_object;
+    }
+}
+
 /**
  * @brief AMFrame::~AMFrame
  */
 AMFrame::~AMFrame(void) {
-    delete fec_rs_object;
+    if(fec_rs_object) {
+        delete fec_rs_object;
+    }
+}
+
+int AMFrame::InitSSF(uint16_t max_msg_size, uint16_t max_chunk_size, uint16_t max_rs_symbols) {
+    // Init SSF Reed Solomon
+    uint8_t rslt;
+    fec_rs_object = new SSFRS(max_msg_size,max_chunk_size,max_rs_symbols,&rslt);
+    return rslt;
 }
 
 // NRZ
@@ -31,7 +46,7 @@ AMFrame::~AMFrame(void) {
  * @param modulation
  * @return
  */
-FrameData AMFrame::NewFrameData(int frame_length, unsigned char modulation) {
+FrameData AMFrame::NewFrameData(int frame_length, FrameModulation modulation) {
     FrameData newframe;
     newframe.modulation = modulation;
     if(newframe.modulation == FRAME_MOD_NRZ) {
@@ -76,7 +91,7 @@ FrameData AMFrame::NewFrameData(int frame_length, unsigned char modulation) {
  * @param modulation
  * @return
  */
-FrameHead AMFrame::NewFrameHead(unsigned char modulation) {
+FrameHead AMFrame::NewFrameHead(FrameModulation modulation) {
     FrameHead newhead;
     newhead.modulation = modulation;
     // little endian

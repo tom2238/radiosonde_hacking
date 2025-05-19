@@ -8,6 +8,7 @@
 #include <QBuffer>
 #include <QtMath>
 #include <QTimer>
+#include "qamframe.h"
 
 #define ORGANIZATION_NAME "tom2238"
 #define ORGANIZATION_DOMAIN "github.com/tom2238"
@@ -39,6 +40,7 @@ private:
     Ui::MainWindow *ui;
     QAudioInput *mAudioIn = nullptr;
     QBuffer  mInputBuffer;
+    QAMFrame frame_decoder;
     // funcs
     void RefreshInputAudioDevices(void);
     void LoadSettings(void);
