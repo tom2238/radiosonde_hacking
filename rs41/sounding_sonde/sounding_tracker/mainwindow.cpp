@@ -14,10 +14,25 @@ MainWindow::MainWindow(QWidget *parent)
     // UI name
     this->setWindowTitle(APPLICATION_DISPLAY_NAME);
 
+    // Set UI parts
+    ui->PG_sync->setRange(0,UI_PG_SYNC_MAX_LIMIT);
+    ui->PG_decoder->setRange(0,64);
+    ui->PG_sync->setValue(0);
+    ui->PG_decoder->setValue(0);
+    sync_detected_pg = false;
+    packet_hex_document = QHexDocument::create(this);
+    ui->HX_packet_view->setDocument(packet_hex_document);
+
     // Audio list sources
     RefreshInputAudioDevices();
 
     // Connect all
+    connect(&sync_timeout_timer,&QTimer::timeout,this,&MainWindow::sync_timeout);
+    connect(&frame_decoder,&QAMFrame::SyncReceived,this,&MainWindow::sync_detected);
+    connect(&frame_decoder,&QAMFrame::PacketReceived,this,&MainWindow::packet_received);
+
+    // Sync timer stop
+    sync_timeout_timer.stop();
 
     // Buttons config
     ui->PB_stop->setEnabled(false);
@@ -79,6 +94,7 @@ void MainWindow::on_PB_start_clicked() {
     mInputBuffer.open(QBuffer::ReadWrite);
     mAudioIn->start(&mInputBuffer);
     // Start
+    sync_timeout_timer.start(1000);
     // Buttons
     ui->PB_stop->setEnabled(true);
     ui->PB_start->setEnabled(false);
@@ -117,7 +133,7 @@ void MainWindow::processAudioIn() {
         frame_decoder.ReadAudioSample(sample_byte);
 
     }
-    qDebug() << "Audio notify size: " << mInputBuffer.size();
+    //qDebug() << "Audio notify size: " << mInputBuffer.size();
 
     mInputBuffer.buffer().clear();
     mInputBuffer.seek(0);
@@ -141,6 +157,11 @@ void MainWindow::on_PB_stop_clicked() {
         mAudioIn->stop();
     }
     mInputBuffer.close();
+    // Timers
+    sync_timeout_timer.stop();
+    // PG
+    ui->PG_sync->setValue(0);
+    ui->PG_decoder->setValue(0);
     // Button
     ui->PB_stop->setEnabled(false);
     ui->PB_start->setEnabled(true);
@@ -208,4 +229,47 @@ void MainWindow::SaveSettings(void) {
     // Feed
     application_setting.setValue("Feed/APRS",ui->CX_aprsEnable->isChecked());
     application_setting.setValue("Feed/HabHub",ui->CX_habhubEnable->isChecked());
+}
+
+/**
+ * @brief MainWindow::sync_timeout
+ */
+void MainWindow::sync_timeout(void) {
+    qDebug() << "Timer out";
+    if(sync_detected_pg) {
+        if(ui->PG_sync->value() > 0) {
+            ui->PG_sync->setValue(ui->PG_sync->value()-1);
+        }
+    }
+    sync_detected_pg = true;
+}
+
+/**
+ * @brief MainWindow::sync_detected
+ */
+void MainWindow::sync_detected(void) {
+    if(ui->PG_sync->value() < UI_PG_SYNC_MAX_LIMIT) {
+        if(ui->PG_sync->value()+8 < UI_PG_SYNC_MAX_LIMIT) {
+            ui->PG_sync->setValue(ui->PG_sync->value()+8);
+        } else {
+            ui->PG_sync->setValue(UI_PG_SYNC_MAX_LIMIT);
+        }
+    }
+    if(ui->PG_sync->value() > UI_PG_SYNC_MAX_LIMIT) {
+        ui->PG_sync->setValue(UI_PG_SYNC_MAX_LIMIT);
+    }
+    sync_detected_pg = false;
+}
+
+/**
+ * @brief MainWindow::packet_received
+ */
+void MainWindow::packet_received(void) {
+    FrameData frm_last = frame_decoder.GetLastFrame();
+    QByteArray packet_bytes;
+    for(int i=0;i<frm_last.length;i++) {
+        packet_bytes.append(static_cast<char>(frm_last.value[i]));
+    }
+    packet_hex_document->replace(0,packet_bytes);
+
 }

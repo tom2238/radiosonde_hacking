@@ -1,11 +1,18 @@
 #include "qamframe.h"
 
+/**
+ * @brief QAMFrame::QAMFrame
+ * @param parent
+ */
 QAMFrame::QAMFrame(QObject *parent) : QObject(parent) {
     // New frame without SSF
     amframe = new AMFrame();
     ssf_enable = false;
 }
 
+/**
+ * @brief QAMFrame::~QAMFrame
+ */
 QAMFrame::~QAMFrame(void) {
     delete amframe;
 }
@@ -244,6 +251,7 @@ bool QAMFrame::ReadAudioSample(int sample_byte) {
                     header_found = true;
                     printf("Header found\n");
                     fflush(stdout);
+                    emit SyncReceived();
                 }
             } else {
                 bitbuf[bit_count] = bit;
@@ -268,6 +276,8 @@ bool QAMFrame::ReadAudioSample(int sample_byte) {
                         //    Frame_RSDecode(&frame);
                         //}
                         amframe->PrintFrameData(current_frame,ecc_code);
+                        previous_frame = current_frame;
+                        emit PacketReceived();
                         fflush(stdout);
                     }
                 }
@@ -280,4 +290,12 @@ bool QAMFrame::ReadAudioSample(int sample_byte) {
     }
 
     return false;
+}
+
+/**
+ * @brief QAMFrame::GetLastFrame
+ * @return
+ */
+FrameData QAMFrame::GetLastFrame(void) {
+    return previous_frame;
 }

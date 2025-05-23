@@ -34,13 +34,15 @@ public:
     bool Init(bool res, bool inv, bool avg, QAudioFormat audio_format, int baudrate, int frame_length, FrameModulation modulation, int ecc_level);
     bool InitSSF(uint16_t max_msg_size = 1016, uint16_t max_chunk_size = 253, uint16_t max_rs_symbols = 16);
     bool ReadAudioSample(int sample_byte);
+    FrameData GetLastFrame(void);
 signals:
-
+    void SyncReceived(void);
+    void PacketReceived(void);
 public slots:
 
 private:
     AMFrame *amframe;
-    FrameData current_frame;
+    FrameData current_frame, previous_frame;
     FrameHead current_head;
     // config
     bool s_resolution;
