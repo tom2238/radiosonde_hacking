@@ -16,6 +16,9 @@
 #define APPLICATION_NAME "sounding_tracker"
 #define APPLICATION_VERSION "0.1"
 #define APPLICATION_DISPLAY_NAME "Sounding tracker"
+#define VAISALA_MODEM_BAUDRATE 4800
+#define VAISALA_MODEM_PACKET_SIZE 62
+#define VAISALA_ECC_MODE 0
 
 // Progress bar limit
 #define UI_PG_SYNC_MAX_LIMIT 64

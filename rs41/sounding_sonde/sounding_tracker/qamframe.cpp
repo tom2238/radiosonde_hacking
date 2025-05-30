@@ -299,3 +299,136 @@ bool QAMFrame::ReadAudioSample(int sample_byte) {
 FrameData QAMFrame::GetLastFrame(void) {
     return previous_frame;
 }
+
+/**
+ * @brief QAMFrame::DecodeFrame
+ * @param frm_dec
+ */
+void QAMFrame::DecodeFrame(FrameData *frm_dec) {
+    // Calculate CRC
+    uint16_t crctrs = amframe->GetCRC16(*frm_dec,ecc_code);
+    uint16_t crcrec = amframe->CalculateCRC16(frm_dec,ecc_code); // Calculate rewrite internal CRC value
+
+    // RS41 ublox GPS data
+    uint16_t year;          // Year, range 1999..2099 (UTC) [- y]
+    year = (frm_dec->value[8]) << 24;
+    year += (frm_dec->value[9]) << 16;
+    year += (frm_dec->value[10]) << 8;
+    year += (frm_dec->value[11]) << 0;
+    uint8_t month;          // Month, range 1..12 (UTC) [- month]
+    month = frm_dec->value[12];
+    uint8_t day;            // Day of Month, range 1..31 (UTC) [- d]
+    day = frm_dec->value[13];
+    uint8_t hour;           // Hour of Day, range 0..23 (UTC) [- h]
+    hour = frm_dec->value[14];
+    uint8_t min;            // Minute of Hour, range 0..59 (UTC) [- min]
+    min = frm_dec->value[15];
+    uint8_t sec;            // Seconds of Minute, range 0..59 (UTC) [- s]
+    sec = frm_dec->value[16];
+    uint8_t gpsFix;         // GPSfix Type
+    gpsFix = frm_dec->value[17];
+    uint8_t numSV;          // Number of SVs used in Nav Solution
+    numSV = frm_dec->value[18];
+    int32_t lon;            // Longitude [1e-7 deg]
+    lon = (frm_dec->value[19]) << 24;
+    lon += (frm_dec->value[20]) << 16;
+    lon += (frm_dec->value[21]) << 8;
+    lon += (frm_dec->value[22]) << 0;
+    double lon_f = ((float)(lon))*1e-7;
+    int32_t lat;            // Latitude [1e-7 deg]
+    lat = (frm_dec->value[23]) << 24;
+    lat += (frm_dec->value[24]) << 16;
+    lat += (frm_dec->value[25]) << 8;
+    lat += (frm_dec->value[26]) << 0;
+    double lat_f = ((float)(lat))*1e-7;
+    int32_t hMSL;           // Height above mean sea level [- mm]
+    hMSL = (frm_dec->value[27]) << 24;
+    hMSL += (frm_dec->value[28]) << 16;
+    hMSL += (frm_dec->value[29]) << 8;
+    hMSL += (frm_dec->value[30]) << 0;
+    float alt_f = ((float)(hMSL))*1e-3;
+    int32_t vspeed;         // Down velocity component [- cm/s]
+    vspeed = (frm_dec->value[31]) << 24;
+    vspeed += (frm_dec->value[32]) << 16;
+    vspeed += (frm_dec->value[33]) << 8;
+    vspeed += (frm_dec->value[34]) << 0;
+    float vspeed_f = ((float)(vspeed))/100;
+    uint32_t gSpeed;        // Ground Speed (2-D) [- cm/s]
+    gSpeed = (frm_dec->value[35]) << 24;
+    gSpeed += (frm_dec->value[36]) << 16;
+    gSpeed += (frm_dec->value[37]) << 8;
+    gSpeed += (frm_dec->value[38]) << 0;
+    float gSpeed_f = ((float)(gSpeed))/100;
+    int32_t heading;        // Heading of motion 2-D [1e-5 deg]
+    heading = (frm_dec->value[39]) << 24;
+    heading += (frm_dec->value[40]) << 16;
+    heading += (frm_dec->value[41]) << 8;
+    heading += (frm_dec->value[42]) << 0;
+    float heading_f = ((float)(heading))*1e-5;
+    uint32_t iTOW;          // GPS Millisecond Time of Week [- ms]
+    iTOW = (frm_dec->value[43]) << 24;
+    iTOW += (frm_dec->value[44]) << 16;
+    iTOW += (frm_dec->value[45]) << 8;
+    iTOW += (frm_dec->value[46]) << 0;
+    // Calculate day
+    uint32_t gpstime = iTOW/1000;
+    uint32_t gpsday = (gpstime / (24 * 3600)) % 7;
+    const char weekday[7][3] = { "Su", "Mo", "Th", "We", "Tr", "Fr", "Sa"};
+    int16_t week;           // GPS week (GPS time) [- -]
+    week = (frm_dec->value[47]) << 8;
+    week += (frm_dec->value[48]) << 0;
+    // PTU main temperature only
+    uint32_t ptu_main_sensor;
+    ptu_main_sensor = (frm_dec->value[49]) << 24;
+    ptu_main_sensor += (frm_dec->value[50]) << 16;
+    ptu_main_sensor += (frm_dec->value[51]) << 8;
+    ptu_main_sensor += (frm_dec->value[52]) << 0;
+    // Calculate temperaure
+    float ptu_main_sensor_f = (float)(ptu_main_sensor);
+    ptu_main_sensor_f = (ptu_main_sensor_f / 100) - 100;
+    // Get voltage
+    uint8_t bat_voltage = frm_dec->value[53];
+    float bat_voltage_f = ((float)(bat_voltage))/10;
+    // Sonde ID
+    char SondeID[8];
+    SondeID[0] = frm_dec->value[54];
+    SondeID[1] = frm_dec->value[55];
+    SondeID[2] = frm_dec->value[56];
+    SondeID[3] = frm_dec->value[57];
+    SondeID[4] = frm_dec->value[58];
+    SondeID[5] = frm_dec->value[59];
+    SondeID[6] = frm_dec->value[60];
+    SondeID[7] = frm_dec->value[61];
+    // Frame count
+    uint16_t frame_cnt;
+    frame_cnt = (frm_dec->value[62]) << 8;
+    frame_cnt += (frm_dec->value[63]);
+    // Frequency MHz
+    uint16_t freq_mhz = (frm_dec->value[64]) << 8;
+    freq_mhz += frm_dec->value[65];
+    float freq_mhz_f = ((float)(freq_mhz))/100;
+    // Txpower dBm
+    uint8_t tx_power = frm_dec->value[66];
+
+    // Check CRC value
+    if(crcrec==crctrs) {
+        if(numSV == 0) {
+            lat_f = 0.0f;
+            lon_f = 0.0f;
+        }
+        // Print UKHAS string
+        char ukhas_msg[512];
+        int chars_writed = snprintf(ukhas_msg,sizeof(ukhas_msg),"$$%s,%d,%02d:%02d:%02d,%.7f,%.7f,%.0f,%.1f,%.1f,%.1f,%.0f,%.1f,%d,%.3f MHz",SondeID,frame_cnt,hour,min,sec,lat_f,lon_f,alt_f,gSpeed_f,ptu_main_sensor_f,bat_voltage_f,heading_f,vspeed_f,numSV,freq_mhz_f);
+        if(chars_writed < sizeof(ukhas_msg)) {
+            // CRC is calculated in habitat_upload
+            //ukhas_crc = ukhas_CRC16_checksum(ukhas_msg);
+        } else {
+            fprintf(stderr,"snprinf buffer length error\n");
+        }
+        //fprintf(stdout,"%s*%04x\n",ukhas_msg,ukhas_crc);
+        fprintf(stdout,"%s\n",ukhas_msg);
+    } else {
+        printf("[CRC FAIL]\n");
+    }
+    fflush(stdout);
+}

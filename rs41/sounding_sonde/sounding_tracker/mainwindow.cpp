@@ -71,7 +71,7 @@ void MainWindow::on_PB_start_clicked() {
     format.setSampleSize(16);
 
     // Init decoder
-    if(frame_decoder.Init(false,false,false,format,4800,40,FRAME_MOD_NRZ,1)) {
+    if(frame_decoder.Init(false,false,false,format,VAISALA_MODEM_BAUDRATE,VAISALA_MODEM_PACKET_SIZE,FRAME_MOD_NRZ,VAISALA_ECC_MODE)) {
         // Invalid config
         on_PB_stop_clicked();
         return;
@@ -270,6 +270,10 @@ void MainWindow::packet_received(void) {
     for(int i=0;i<frm_last.length;i++) {
         packet_bytes.append(static_cast<char>(frm_last.value[i]));
     }
+    // Set RAW data
+    packet_hex_document->remove(0,packet_hex_document->length());
     packet_hex_document->replace(0,packet_bytes);
-
+    // Decode packet
+    frame_decoder.DecodeFrame(&frm_last);
 }
+

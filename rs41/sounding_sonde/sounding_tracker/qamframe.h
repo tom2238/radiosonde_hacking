@@ -35,6 +35,7 @@ public:
     bool InitSSF(uint16_t max_msg_size = 1016, uint16_t max_chunk_size = 253, uint16_t max_rs_symbols = 16);
     bool ReadAudioSample(int sample_byte);
     FrameData GetLastFrame(void);
+    void DecodeFrame(FrameData *frm_dec);
 signals:
     void SyncReceived(void);
     void PacketReceived(void);
