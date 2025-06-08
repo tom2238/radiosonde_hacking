@@ -275,5 +275,18 @@ void MainWindow::packet_received(void) {
     packet_hex_document->replace(0,packet_bytes);
     // Decode packet
     frame_decoder.DecodeFrame(&frm_last);
+    // Get decoded packet
+    QMap<QString, QString> rec_data;
+    rec_data = frame_decoder.GetDecodedFrame();
+    QString gps_year = rec_data.value("GPS_YEAR");
+    QString gps_month = rec_data.value("GPS_MONTH");
+    QString gps_day = rec_data.value("GPS_DAY");
+    QString gps_hour = rec_data.value("GPS_HOUR");
+    QString gps_min = rec_data.value("GPS_MINUTE");
+    QString gps_sec = rec_data.value("GPS_SECOND");
+
+    // Set UI
+    ui->LB_rx_gpstime->setText(gps_year + "/" + gps_month + "/" + gps_day + " " + gps_hour + ":" + gps_min + ":" + gps_sec);
+    ui->LB_rx_id->setText(rec_data.value("SONDE_ID"));
 }
 

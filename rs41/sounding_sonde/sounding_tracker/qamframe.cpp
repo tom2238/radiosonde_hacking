@@ -8,6 +8,24 @@ QAMFrame::QAMFrame(QObject *parent) : QObject(parent) {
     // New frame without SSF
     amframe = new AMFrame();
     ssf_enable = false;
+    // Init decoded data
+    frame_decoded.insert("GPS_YEAR","2000");
+    frame_decoded.insert("GPS_MONTH","1");
+    frame_decoded.insert("GPS_DAY","1");
+    frame_decoded.insert("GPS_HOUR","0");
+    frame_decoded.insert("GPS_MINUTE","0");
+    frame_decoded.insert("GPS_SECOND","0");
+    frame_decoded.insert("GPS_FIX","0");
+    frame_decoded.insert("GPS_NUMSV","0");
+    frame_decoded.insert("GPS_LON","0.0000");
+    frame_decoded.insert("GPS_LAT","0.0000");
+    frame_decoded.insert("GPS_ALT","0.0");
+    frame_decoded.insert("GPS_CLIMBING","0.00");
+
+    frame_decoded.insert("SONDE_ID","UNKNOWN");
+
+    qDebug() << "QMap list" << frame_decoded.value("GPS_YEAR") << "s:" << frame_decoded.size();
+
 }
 
 /**
@@ -390,7 +408,7 @@ void QAMFrame::DecodeFrame(FrameData *frm_dec) {
     uint8_t bat_voltage = frm_dec->value[53];
     float bat_voltage_f = ((float)(bat_voltage))/10;
     // Sonde ID
-    char SondeID[8];
+    char SondeID[9];
     SondeID[0] = frm_dec->value[54];
     SondeID[1] = frm_dec->value[55];
     SondeID[2] = frm_dec->value[56];
@@ -399,6 +417,7 @@ void QAMFrame::DecodeFrame(FrameData *frm_dec) {
     SondeID[5] = frm_dec->value[59];
     SondeID[6] = frm_dec->value[60];
     SondeID[7] = frm_dec->value[61];
+    SondeID[8] = '\0';
     // Frame count
     uint16_t frame_cnt;
     frame_cnt = (frm_dec->value[62]) << 8;
@@ -416,6 +435,16 @@ void QAMFrame::DecodeFrame(FrameData *frm_dec) {
             lat_f = 0.0f;
             lon_f = 0.0f;
         }
+        // Save to map
+        frame_decoded["GPS_YEAR"] = QString::number(year,10);
+        frame_decoded["GPS_MONTH"] = QString::number(month,10);
+        frame_decoded["GPS_DAY"] = QString::number(day,10);
+        frame_decoded["GPS_HOUR"] = QString::number(hour,10);
+        frame_decoded["GPS_MINUTE"] = QString::number(min,10);
+        frame_decoded["GPS_SECOND"] = QString::number(sec,10);
+
+        frame_decoded["SONDE_ID"] = QString(SondeID);
+
         // Print UKHAS string
         char ukhas_msg[512];
         int chars_writed = snprintf(ukhas_msg,sizeof(ukhas_msg),"$$%s,%d,%02d:%02d:%02d,%.7f,%.7f,%.0f,%.1f,%.1f,%.1f,%.0f,%.1f,%d,%.3f MHz",SondeID,frame_cnt,hour,min,sec,lat_f,lon_f,alt_f,gSpeed_f,ptu_main_sensor_f,bat_voltage_f,heading_f,vspeed_f,numSV,freq_mhz_f);
@@ -431,4 +460,12 @@ void QAMFrame::DecodeFrame(FrameData *frm_dec) {
         printf("[CRC FAIL]\n");
     }
     fflush(stdout);
+}
+
+/**
+ * @brief QAMFrame::GetDecodedFrame
+ * @return
+ */
+QMap<QString, QString> QAMFrame::GetDecodedFrame(void) {
+    return frame_decoded;
 }

@@ -8,6 +8,7 @@
 #include <QBuffer>
 #include <QtMath>
 #include <QTimer>
+#include <QMap>
 #include "QHexView/qhexview.h"
 #include "qamframe.h"
 

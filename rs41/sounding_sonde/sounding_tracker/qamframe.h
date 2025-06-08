@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QAudioFormat>
 #include <QDebug>
+#include <QMap>
 #include <stdint.h>
 #include "amframe.h"
 
@@ -36,6 +37,7 @@ public:
     bool ReadAudioSample(int sample_byte);
     FrameData GetLastFrame(void);
     void DecodeFrame(FrameData *frm_dec);
+    QMap<QString, QString> GetDecodedFrame();
 signals:
     void SyncReceived(void);
     void PacketReceived(void);
@@ -58,6 +60,9 @@ private:
     QAMF_RBits qamf_reading;
     // wave info
     float s_samples_per_bit;
+
+    // Decoded data
+    QMap<QString, QString> frame_decoded;
 
     // func
     int ReadSample(int byte);
