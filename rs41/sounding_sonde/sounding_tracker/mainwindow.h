@@ -59,5 +59,6 @@ private:
     void RefreshInputAudioDevices(void);
     void LoadSettings(void);
     void SaveSettings(void);
+    void UpdateSoundingUI(void);
 };
 #endif // MAINWINDOW_H

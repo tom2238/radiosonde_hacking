@@ -9,7 +9,7 @@ QAMFrame::QAMFrame(QObject *parent) : QObject(parent) {
     amframe = new AMFrame();
     ssf_enable = false;
     // Init decoded data
-    frame_decoded.insert("GPS_YEAR","2000");
+    frame_decoded.insert("GPS_YEAR","1970");
     frame_decoded.insert("GPS_MONTH","1");
     frame_decoded.insert("GPS_DAY","1");
     frame_decoded.insert("GPS_HOUR","0");
@@ -17,12 +17,18 @@ QAMFrame::QAMFrame(QObject *parent) : QObject(parent) {
     frame_decoded.insert("GPS_SECOND","0");
     frame_decoded.insert("GPS_FIX","0");
     frame_decoded.insert("GPS_NUMSV","0");
-    frame_decoded.insert("GPS_LON","0.0000");
-    frame_decoded.insert("GPS_LAT","0.0000");
+    frame_decoded.insert("GPS_LON","0.000000");
+    frame_decoded.insert("GPS_LAT","0.000000");
     frame_decoded.insert("GPS_ALT","0.0");
     frame_decoded.insert("GPS_CLIMBING","0.00");
-
+    frame_decoded.insert("GPS_GROUNDSPEED","0.00");
+    frame_decoded.insert("GPS_HEADING","0");
+    frame_decoded.insert("TEMPERATURE_MAIN","0.0");
     frame_decoded.insert("SONDE_ID","UNKNOWN");
+    frame_decoded.insert("FRAME_COUNT","0");
+    frame_decoded.insert("ONBOARD_VOLTAGE","0.0");
+    frame_decoded.insert("TX_FREQUENCY","433.125");
+    frame_decoded.insert("TX_POWER","10");
 
     qDebug() << "QMap list" << frame_decoded.value("GPS_YEAR") << "s:" << frame_decoded.size();
 
@@ -442,8 +448,20 @@ void QAMFrame::DecodeFrame(FrameData *frm_dec) {
         frame_decoded["GPS_HOUR"] = QString::number(hour,10);
         frame_decoded["GPS_MINUTE"] = QString::number(min,10);
         frame_decoded["GPS_SECOND"] = QString::number(sec,10);
-
+        frame_decoded["GPS_FIX"] = QString::number(gpsFix,10);
+        frame_decoded["GPS_NUMSV"] = QString::number(numSV,10);
+        frame_decoded["GPS_LON"] = QString::number(lon_f,'f',6);
+        frame_decoded["GPS_LAT"] = QString::number(lat_f,'f',6);
+        frame_decoded["GPS_ALT"] = QString::number(alt_f,'f',1);
+        frame_decoded["GPS_CLIMBING"] = QString::number(vspeed_f,'f',1);
+        frame_decoded["GPS_GROUNDSPEED"] = QString::number(gSpeed_f,'f',1);
+        frame_decoded["GPS_HEADING"] = QString::number(heading_f,'f',0);
+        frame_decoded["TEMPERATURE_MAIN"] = QString::number(ptu_main_sensor_f,'f',1);
         frame_decoded["SONDE_ID"] = QString(SondeID);
+        frame_decoded["FRAME_COUNT"] = QString::number(frame_cnt,10);
+        frame_decoded["ONBOARD_VOLTAGE"] = QString::number(bat_voltage_f,'f',1);
+        frame_decoded["TX_FREQUENCY"] = QString::number(freq_mhz_f,'f',3);
+        frame_decoded["TX_POWER"] = QString::number(tx_power,10);
 
         // Print UKHAS string
         char ukhas_msg[512];

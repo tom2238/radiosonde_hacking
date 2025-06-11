@@ -41,7 +41,8 @@ MainWindow::MainWindow(QWidget *parent)
     // Load settings
     LoadSettings();
 
-
+    // Get decoded packet and update UI
+    UpdateSoundingUI();
 }
 
 /**
@@ -275,7 +276,14 @@ void MainWindow::packet_received(void) {
     packet_hex_document->replace(0,packet_bytes);
     // Decode packet
     frame_decoder.DecodeFrame(&frm_last);
-    // Get decoded packet
+    // Get decoded packet and update UI
+    UpdateSoundingUI();
+}
+
+/**
+ * @brief MainWindow::UpdateSoundingUI
+ */
+void MainWindow::UpdateSoundingUI(void) {
     QMap<QString, QString> rec_data;
     rec_data = frame_decoder.GetDecodedFrame();
     QString gps_year = rec_data.value("GPS_YEAR");
@@ -287,6 +295,17 @@ void MainWindow::packet_received(void) {
 
     // Set UI
     ui->LB_rx_gpstime->setText(gps_year + "/" + gps_month + "/" + gps_day + " " + gps_hour + ":" + gps_min + ":" + gps_sec);
+    ui->LB_rx_gps_lat->setText(rec_data.value("GPS_LAT"));
+    ui->LB_rx_gps_lon->setText(rec_data.value("GPS_LON"));
+    ui->LB_rx_gps_alt->setText(rec_data.value("GPS_ALT") + " m");
+    ui->LB_rx_gps_climbing->setText(rec_data.value("GPS_CLIMBING") + " m/s");
+    ui->LB_rx_gps_numsv->setText(rec_data.value("GPS_NUMSV"));
+    ui->LB_rx_gps_groundspeed->setText(rec_data.value("GPS_GROUNDSPEED") + " m/s");
+    ui->LB_rx_gps_heading->setText(rec_data.value("GPS_HEADING") + " °");
+    ui->LB_rx_temperature->setText(rec_data.value("TEMPERATURE_MAIN") + " °C");
     ui->LB_rx_id->setText(rec_data.value("SONDE_ID"));
+    ui->LB_rx_frame->setText(rec_data.value("FRAME_COUNT"));
+    ui->LB_rx_voltage->setText(rec_data.value("ONBOARD_VOLTAGE") + " V");
+    ui->LB_rx_frequency->setText(rec_data.value("TX_FREQUENCY") + " MHz");
+    ui->LB_rx_power->setText(rec_data.value("TX_POWER") + " dBm");
 }
-
