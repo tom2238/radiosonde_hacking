@@ -20,6 +20,9 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     amframe.cpp \
+    habitat.cpp \
+    hb_base64.cpp \
+    hb_sha256.cpp \
     main.cpp \
     mainwindow.cpp \
     qamframe.cpp \
@@ -27,6 +30,9 @@ SOURCES += \
 
 HEADERS += \
     amframe.h \
+    habitat.h \
+    hb_base64.h \
+    hb_sha256.h \
     mainwindow.h \
     qamframe.h \
     ssfrs.h

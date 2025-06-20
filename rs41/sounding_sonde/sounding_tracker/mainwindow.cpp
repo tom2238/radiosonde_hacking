@@ -43,6 +43,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Get decoded packet and update UI
     UpdateSoundingUI();
+
+
+
 }
 
 /**

@@ -11,6 +11,7 @@
 #include <QMap>
 #include "QHexView/qhexview.h"
 #include "qamframe.h"
+#include "habitat.h"
 
 #define ORGANIZATION_NAME "tom2238"
 #define ORGANIZATION_DOMAIN "github.com/tom2238"
