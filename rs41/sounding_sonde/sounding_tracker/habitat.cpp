@@ -183,7 +183,7 @@ void Habitat::upload_telemetry_packet(char *telemetry, char *callsign) {
         HB_SHA256::SHA256_CTX ctx;
         unsigned char hash[32];
         char doc_id[100];
-        char json[1000], now[32];
+        char json[2000], now[32];
         struct curl_slist *headers = NULL;
         time_t rawtime;
         struct tm *tm;
@@ -219,7 +219,7 @@ void Habitat::upload_telemetry_packet(char *telemetry, char *callsign) {
         hash_to_hex(hash, doc_id);
 
         // Create json with the base64 data in hex, the tracker callsign and the current timestamp
-        sprintf(json,
+        snprintf(json, sizeof (json),
                 "{\"data\": {\"_raw\": \"%s\"},\"receivers\": {\"%s\": {\"time_created\": \"%s\",\"time_uploaded\": \"%s\"}}}",
                 base64_data,
                 callsign,
@@ -229,7 +229,7 @@ void Habitat::upload_telemetry_packet(char *telemetry, char *callsign) {
         printf("::%s::\n",json);
 
         // Set the URL that is about to receive our PUT
-        sprintf(url, "http://habitat.habhub.org/habitat/_design/payload_telemetry/_update/add_listener/%s", doc_id);
+        snprintf(url, sizeof(url), "http://habitat.habhub.org/habitat/_design/payload_telemetry/_update/add_listener/%s", doc_id);
 
         // Set the headers
         headers = NULL;

@@ -3,7 +3,7 @@ QT       += core gui multimedia
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
-LIBS +=
+LIBS += -lcurl
 INCLUDEPATH += $$PWD/include
 include(QHexView.pri)
 
@@ -26,6 +26,7 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     qamframe.cpp \
+    qsondehub.cpp \
     ssfrs.cpp
 
 HEADERS += \
@@ -35,6 +36,7 @@ HEADERS += \
     hb_sha256.h \
     mainwindow.h \
     qamframe.h \
+    qsondehub.h \
     ssfrs.h
 
 FORMS += \

@@ -45,7 +45,16 @@ MainWindow::MainWindow(QWidget *parent)
     UpdateSoundingUI();
 
 
+    // Not work !! Habitat::UploadListenerTelemetry(ui->LE_callsign->text().toLocal8Bit().data(),time(NULL),ui->LE_GS_lat->text().toFloat(),ui->LE_GS_lon->text().toFloat(),ui->LE_GS_radioType->text().toLocal8Bit().data(),ui->LE_GS_antenna->text().toLocal8Bit().data());
 
+    QList<double> pos;
+    pos.append(49.12566);
+    pos.append(17.04226);
+    pos.append(195045.0);
+    QSondeHub *sondehub = new QSondeHub(this,"OK2HJO",pos,"SDR","GP","Sounding tracker","0.0.1",2,20,5,false);
+
+    sondehub->StationPositionUpload();
+    delete sondehub;
 }
 
 /**
