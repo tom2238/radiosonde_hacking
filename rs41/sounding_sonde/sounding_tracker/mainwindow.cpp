@@ -9,19 +9,30 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
-    // Setp
+    // Setup
     ui->setupUi(this);
     // UI name
     this->setWindowTitle(APPLICATION_DISPLAY_NAME);
+    //QLocale curLocale(QLocale("cs_CZ"));
+    //QLocale::setDefault(curLocale);
+    QDate date = QDate::currentDate();
+    QString dateString = QLocale().toString(date);
+
+    qDebug() << dateString;
+    qDebug() << QLocale().name();
 
     // Set UI parts
     ui->PG_sync->setRange(0,UI_PG_SYNC_MAX_LIMIT);
     ui->PG_decoder->setRange(0,64);
     ui->PG_sync->setValue(0);
     ui->PG_decoder->setValue(0);
+    ui->LE_GS_lat->setValidator(new QDoubleValidator(-90.0,90.0,7));
+    ui->LE_GS_lon->setValidator(new QDoubleValidator(-180.0,180.0,7));
     sync_detected_pg = false;
     packet_hex_document = QHexDocument::create(this);
     ui->HX_packet_view->setDocument(packet_hex_document);
+
+
 
     // Audio list sources
     RefreshInputAudioDevices();
@@ -48,13 +59,16 @@ MainWindow::MainWindow(QWidget *parent)
     // Not work !! Habitat::UploadListenerTelemetry(ui->LE_callsign->text().toLocal8Bit().data(),time(NULL),ui->LE_GS_lat->text().toFloat(),ui->LE_GS_lon->text().toFloat(),ui->LE_GS_radioType->text().toLocal8Bit().data(),ui->LE_GS_antenna->text().toLocal8Bit().data());
 
     QList<double> pos;
-    pos.append(49.12566);
-    pos.append(17.04226);
-    pos.append(195045.0);
-    QSondeHub *sondehub = new QSondeHub(this,"OK2HJO",pos,"SDR","GP","Sounding tracker","0.0.1",2,20,5,false);
+    pos.append(QLocale().toDouble(ui->LE_GS_lat->text()));
+    pos.append(QLocale().toDouble(ui->LE_GS_lon->text()));
+    pos.append(195.0);
+    sondehub = new QSondeHub(this,ui->LE_callsign->text(),pos,ui->LE_GS_radioType->text(),ui->LE_GS_antenna->text(),APPLICATION_NAME,APPLICATION_VERSION,2,20,5,false);
 
-    sondehub->StationPositionUpload();
-    delete sondehub;
+    if(ui->CX_habhubEnable->isChecked()) {
+        sondehub->StationPositionUpload();
+    }
+
+
 }
 
 /**
@@ -65,6 +79,8 @@ MainWindow::~MainWindow() {
     SaveSettings();
     // Delete UI
     delete ui;
+    // Sonde hub
+    delete sondehub;
 }
 
 /**
@@ -214,7 +230,7 @@ void MainWindow::LoadSettings(void) {
     ui->LE_GS_radioType->setText(application_setting.value("Station/Radio","RTL-SDR").toString());
     // Feed
     bool aprs_en = application_setting.value("Feed/APRS","false").toBool();
-    bool habhub_en = application_setting.value("Feed/HabHub","false").toBool();
+    bool habhub_en = application_setting.value("Feed/SondeHub","false").toBool();
     if(aprs_en) {
         ui->CX_aprsEnable->setCheckState(Qt::CheckState::Checked);
     } else {
@@ -241,7 +257,7 @@ void MainWindow::SaveSettings(void) {
     application_setting.setValue("Station/Radio",ui->LE_GS_radioType->text());
     // Feed
     application_setting.setValue("Feed/APRS",ui->CX_aprsEnable->isChecked());
-    application_setting.setValue("Feed/HabHub",ui->CX_habhubEnable->isChecked());
+    application_setting.setValue("Feed/SondeHub",ui->CX_habhubEnable->isChecked());
 }
 
 /**

@@ -9,6 +9,8 @@
 #include <QtMath>
 #include <QTimer>
 #include <QMap>
+#include <QLocale>
+#include <QDoubleValidator>
 #include "QHexView/qhexview.h"
 #include "qamframe.h"
 #include "qsondehub.h"
@@ -16,7 +18,7 @@
 #define ORGANIZATION_NAME "tom2238"
 #define ORGANIZATION_DOMAIN "github.com/tom2238"
 #define APPLICATION_NAME "sounding_tracker"
-#define APPLICATION_VERSION "0.1"
+#define APPLICATION_VERSION "0.1.0.0"
 #define APPLICATION_DISPLAY_NAME "Sounding tracker"
 #define VAISALA_MODEM_BAUDRATE 4800
 #define VAISALA_MODEM_PACKET_SIZE 62
@@ -56,6 +58,7 @@ private:
     QTimer sync_timeout_timer;
     bool sync_detected_pg;
     QHexDocument *packet_hex_document;
+    QSondeHub *sondehub;
     // funcs
     void RefreshInputAudioDevices(void);
     void LoadSettings(void);

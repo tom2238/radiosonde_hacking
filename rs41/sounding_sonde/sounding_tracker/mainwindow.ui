@@ -23,7 +23,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -202,7 +202,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>Habhub</string>
+                 <string>Sondehub</string>
                 </property>
                </widget>
               </item>

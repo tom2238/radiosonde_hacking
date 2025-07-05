@@ -3,18 +3,20 @@
 
 #include <QObject>
 #include <QDebug>
-#include <QUrl>
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
+#include <QUrl>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QByteArray>
 
 
-// SondeHub API endpoint
-#define SONDEHUB_URL  QString("https://api.v2.sondehub.org/sondes/telemetry")
-#define SONDEHUB_STATION_POSITION_URL QString("https://api.v2.sondehub.org/listeners")
+// SondeHub API endpoint http or https
+#define SONDEHUB_URL  QString("http://api.v2.sondehub.org/sondes/telemetry/")
+#define SONDEHUB_STATION_POSITION_URL QString("https://api.v2.sondehub.org/amateur/listeners")
+//#define SONDEHUB_STATION_POSITION_URL QString("http://192.168.1.250/teplota/")
 
 class QSondeHub : public QObject
 {
@@ -33,6 +35,7 @@ public:
                        int upload_retries_p = 5,
                        bool  developer_mode_p = false
             );
+    ~QSondeHub();
     void StationPositionUpload(void);
     void UpdateStationPosition(double lat, double lon, double alt);
 
@@ -40,6 +43,7 @@ public:
 signals:
 
 public slots:
+    void replyFinished (QNetworkReply *reply);
 
 private:
     QString uploader_callsign;
@@ -52,6 +56,7 @@ private:
     int upload_timeout;
     int upload_retries;
     bool  developer_mode;
+    QNetworkAccessManager *sondehub_netman;
 
 };
 

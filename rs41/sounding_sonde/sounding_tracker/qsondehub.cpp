@@ -53,6 +53,18 @@ QSondeHub::QSondeHub(QObject *parent,
         // Error
         qDebug() << "Invalid uploader position supplied, must be a list with 3 (lat, lon, alt) elements.";
     }
+
+    // New network manager
+    sondehub_netman = new QNetworkAccessManager(this);
+    auto stat_con = connect(sondehub_netman, SIGNAL(finished(QNetworkReply*)), this, SLOT(replyFinished(QNetworkReply*)));
+   // qDebug() << "connect" << stat_con;
+}
+
+/**
+ * @brief QSondeHub::~QSondeHub
+ */
+QSondeHub::~QSondeHub() {
+    delete sondehub_netman;
 }
 
 /**
@@ -78,14 +90,75 @@ void QSondeHub::StationPositionUpload(void) {
     if(uploader_position.size() != 3) {
         qDebug() << "Invalid uploader position supplied, must be a list with 3 (lat, lon, alt) elements.";
     }
-    // Build json
-    QJsonObject json_position;
-    json_position["software_name"] = software_name;
-    json_position["software_version"] = software_version;
 
-    QJsonDocument json_position_doc(json_position);
-    qDebug() << json_position_doc.toJson();
+    // Position
+    QJsonArray position {
+            QString::number(uploader_position.at(0),'f',7), QString::number(uploader_position.at(1),'f',7), QString::number(uploader_position.at(2),'f',1)
+     };
 
+    QJsonObject obj {
+           {"software_name", software_name},
+           {"software_version", software_version},
+           {"uploader_callsign", uploader_callsign},
+           {"uploader_position", position},
+           {"uploader_radio", uploader_radio},
+           {"uploader_antenna", uploader_antenna},
+           {"uploader_contact_email", "mail@example.com"},
+           {"mobile", false}
+       };
+
+
+
+    QJsonDocument json_position_doc(obj);
+    QByteArray json_post_data = json_position_doc.toJson();
+    qDebug().noquote() << json_post_data;
+
+
+    QUrl url(SONDEHUB_STATION_POSITION_URL);
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setHeader(QNetworkRequest::ContentLengthHeader, QByteArray::number(json_post_data.size()));
+    request.setHeader(QNetworkRequest::UserAgentHeader, software_name + "-V:" + software_version);
+
+    qDebug() << "Reply url:" << request.url().toString();
+
+    //qDebug() << QSslSocket::sslLibraryBuildVersionString();
+    //qDebug() << QSslSocket::sslLibraryVersionString();
+
+    //QObject::connect(net_access, &QNetworkAccessManager::finished, net_access, &QNetworkAccessManager::deleteLater);
+    //QObject::connect(net_access, &QNetworkAccessManager::finished, reply, &QNetworkReply::deleteLater);
+
+    sondehub_netman->put(request, json_post_data);
+
+    //sondehub_netman->get(request);
+
+    qDebug() << "End";
+}
+
+/**
+ * @brief QSondeHub::replyFinished
+ * @param reply
+ */
+void QSondeHub::replyFinished (QNetworkReply *reply) {
+    if(reply) {
+        if(reply->error()) {
+            qDebug() << "ERROR!";
+            qDebug() << reply->errorString();
+            qDebug() << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug().noquote() << reply->readAll();
+        } else {
+            qDebug() << reply->header(QNetworkRequest::ContentTypeHeader).toString();
+            qDebug() << reply->header(QNetworkRequest::LastModifiedHeader).toDateTime().toString();
+            qDebug() << reply->header(QNetworkRequest::ContentLengthHeader).toULongLong();
+            qDebug() << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString();
+            qDebug().noquote() << reply->readAll();
+        }
+
+        reply->deleteLater();
+    } else {
+        qDebug() << "SondeHub::handleReply: reply is null";
+    }
 }
 
 /**
