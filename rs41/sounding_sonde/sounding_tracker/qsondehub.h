@@ -14,7 +14,7 @@
 
 
 // SondeHub API endpoint http or https
-#define SONDEHUB_URL  QString("http://api.v2.sondehub.org/sondes/telemetry/")
+#define SONDEHUB_URL QString("https://api.v2.sondehub.org/amateur/telemetry")
 #define SONDEHUB_STATION_POSITION_URL QString("https://api.v2.sondehub.org/amateur/listeners")
 //#define SONDEHUB_STATION_POSITION_URL QString("http://192.168.1.250/teplota/")
 
@@ -41,7 +41,7 @@ public:
 
 
 signals:
-
+    void NetworkReplyReceived(int);
 public slots:
     void replyFinished (QNetworkReply *reply);
 

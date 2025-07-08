@@ -23,7 +23,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -662,61 +662,51 @@
           </item>
          </layout>
         </widget>
+        <widget class="QWidget" name="TB_log">
+         <attribute name="title">
+          <string>Log</string>
+         </attribute>
+        </widget>
        </widget>
       </item>
      </layout>
     </item>
     <item row="2" column="0">
      <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_8">
-        <property name="minimumSize">
-         <size>
-          <width>150</width>
-          <height>0</height>
-         </size>
-        </property>
+      <item row="0" column="1">
+       <widget class="QLabel" name="LB_stat_crc">
         <property name="text">
-         <string>Synchronizace</string>
+         <string>CRC</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
-       <widget class="QProgressBar" name="PG_sync">
-        <property name="value">
-         <number>24</number>
-        </property>
-        <property name="textVisible">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QProgressBar" name="PG_decoder">
-        <property name="value">
-         <number>24</number>
-        </property>
-        <property name="textVisible">
-         <bool>false</bool>
-        </property>
-        <property name="invertedAppearance">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_9">
-        <property name="minimumSize">
-         <size>
-          <width>150</width>
-          <height>0</height>
-         </size>
-        </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="LB_stat_sync">
         <property name="text">
-         <string>Dekodér</string>
+         <string>SYNC</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLabel" name="LB_stat_valid">
+        <property name="text">
+         <string>VALID</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QLabel" name="LB_stat_net">
+        <property name="text">
+         <string>NET</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>

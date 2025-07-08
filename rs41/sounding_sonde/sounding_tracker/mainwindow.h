@@ -40,13 +40,22 @@ public:
     ~MainWindow();
 
 private slots:
+    // Audio
     void processAudioIn();
     void stateChangeAudioIn(QAudio::State s);
     // Buttons
     void on_PB_start_clicked();
     void on_PB_stop_clicked();
+    // Indicators
     void sync_timeout();
     void sync_detected();
+    void crc_timeout();
+    void crc_detected(bool state);
+    void valid_timeout();
+    void valid_detected(bool state);
+    void net_timeout();
+    void net_reply_received(int httpCode);
+    // Packet
     void packet_received();
 
 private:
@@ -56,7 +65,9 @@ private:
     QBuffer  mInputBuffer;
     QAMFrame frame_decoder;
     QTimer sync_timeout_timer;
-    bool sync_detected_pg;
+    QTimer crc_timeout_timer;
+    QTimer valid_timeout_timer;
+    QTimer net_timeout_timer;
     QHexDocument *packet_hex_document;
     QSondeHub *sondehub;
     // funcs

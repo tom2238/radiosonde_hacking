@@ -140,21 +140,23 @@ void QSondeHub::StationPositionUpload(void) {
  * @param reply
  */
 void QSondeHub::replyFinished (QNetworkReply *reply) {
+    int httpStatusCode;
     if(reply) {
+        httpStatusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if(reply->error()) {
             qDebug() << "ERROR!";
             qDebug() << reply->errorString();
-            qDebug() << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << httpStatusCode;
             qDebug().noquote() << reply->readAll();
         } else {
             qDebug() << reply->header(QNetworkRequest::ContentTypeHeader).toString();
             qDebug() << reply->header(QNetworkRequest::LastModifiedHeader).toDateTime().toString();
             qDebug() << reply->header(QNetworkRequest::ContentLengthHeader).toULongLong();
-            qDebug() << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << httpStatusCode;
             qDebug() << reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString();
             qDebug().noquote() << reply->readAll();
         }
-
+        emit NetworkReplyReceived(httpStatusCode);
         reply->deleteLater();
     } else {
         qDebug() << "SondeHub::handleReply: reply is null";

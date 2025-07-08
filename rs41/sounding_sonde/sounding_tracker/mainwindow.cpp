@@ -21,29 +21,55 @@ MainWindow::MainWindow(QWidget *parent)
     qDebug() << dateString;
     qDebug() << QLocale().name();
 
+    // Create objects
+    QList<double> pos;
+    pos.append(QLocale().toDouble(ui->LE_GS_lat->text()));
+    pos.append(QLocale().toDouble(ui->LE_GS_lon->text()));
+    pos.append(250.0);
+    sondehub = new QSondeHub(this,ui->LE_callsign->text(),pos,ui->LE_GS_radioType->text(),ui->LE_GS_antenna->text(),APPLICATION_NAME,APPLICATION_VERSION,2,20,5,false);
+
+
     // Set UI parts
-    ui->PG_sync->setRange(0,UI_PG_SYNC_MAX_LIMIT);
-    ui->PG_decoder->setRange(0,64);
-    ui->PG_sync->setValue(0);
-    ui->PG_decoder->setValue(0);
     ui->LE_GS_lat->setValidator(new QDoubleValidator(-90.0,90.0,7));
     ui->LE_GS_lon->setValidator(new QDoubleValidator(-180.0,180.0,7));
-    sync_detected_pg = false;
     packet_hex_document = QHexDocument::create(this);
     ui->HX_packet_view->setDocument(packet_hex_document);
-
-
+    ui->LB_stat_sync->setAutoFillBackground(true);
+    ui->LB_stat_crc->setAutoFillBackground(true);
+    ui->LB_stat_valid->setAutoFillBackground(true);
+    ui->LB_stat_net->setAutoFillBackground(true);
 
     // Audio list sources
     RefreshInputAudioDevices();
 
     // Connect all
+    // Timers
     connect(&sync_timeout_timer,&QTimer::timeout,this,&MainWindow::sync_timeout);
+    connect(&crc_timeout_timer,&QTimer::timeout,this,&MainWindow::crc_timeout);
+    connect(&valid_timeout_timer,&QTimer::timeout,this,&MainWindow::valid_timeout);
+    connect(&net_timeout_timer,&QTimer::timeout,this,&MainWindow::net_timeout);
+    // Decoder
     connect(&frame_decoder,&QAMFrame::SyncReceived,this,&MainWindow::sync_detected);
+    connect(&frame_decoder,&QAMFrame::CrcReceived,this,&MainWindow::crc_detected);
+    connect(&frame_decoder,&QAMFrame::ValidFrameReceived,this,&MainWindow::valid_detected);
+    connect(sondehub,&QSondeHub::NetworkReplyReceived,this,&MainWindow::net_reply_received);
     connect(&frame_decoder,&QAMFrame::PacketReceived,this,&MainWindow::packet_received);
 
     // Sync timer stop
     sync_timeout_timer.stop();
+    sync_timeout_timer.setSingleShot(true);
+
+    // CRC timer stop
+    crc_timeout_timer.stop();
+    crc_timeout_timer.setSingleShot(true);
+
+    // Valid data timer stop
+    valid_timeout_timer.stop();
+    valid_timeout_timer.setSingleShot(true);
+
+    // Net upload success timer stop
+    net_timeout_timer.stop();
+    net_timeout_timer.setSingleShot(true);
 
     // Buttons config
     ui->PB_stop->setEnabled(false);
@@ -58,12 +84,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Not work !! Habitat::UploadListenerTelemetry(ui->LE_callsign->text().toLocal8Bit().data(),time(NULL),ui->LE_GS_lat->text().toFloat(),ui->LE_GS_lon->text().toFloat(),ui->LE_GS_radioType->text().toLocal8Bit().data(),ui->LE_GS_antenna->text().toLocal8Bit().data());
 
-    QList<double> pos;
-    pos.append(QLocale().toDouble(ui->LE_GS_lat->text()));
-    pos.append(QLocale().toDouble(ui->LE_GS_lon->text()));
-    pos.append(195.0);
-    sondehub = new QSondeHub(this,ui->LE_callsign->text(),pos,ui->LE_GS_radioType->text(),ui->LE_GS_antenna->text(),APPLICATION_NAME,APPLICATION_VERSION,2,20,5,false);
 
+    // Upload station position
     if(ui->CX_habhubEnable->isChecked()) {
         sondehub->StationPositionUpload();
     }
@@ -122,8 +144,7 @@ void MainWindow::on_PB_start_clicked() {
 
     mInputBuffer.open(QBuffer::ReadWrite);
     mAudioIn->start(&mInputBuffer);
-    // Start
-    sync_timeout_timer.start(1000);
+
     // Buttons
     ui->PB_stop->setEnabled(true);
     ui->PB_start->setEnabled(false);
@@ -158,9 +179,7 @@ void MainWindow::processAudioIn() {
         } else {
             sample_byte = 0;
         }
-        // TODO: Read byte
         frame_decoder.ReadAudioSample(sample_byte);
-
     }
     //qDebug() << "Audio notify size: " << mInputBuffer.size();
 
@@ -186,11 +205,6 @@ void MainWindow::on_PB_stop_clicked() {
         mAudioIn->stop();
     }
     mInputBuffer.close();
-    // Timers
-    sync_timeout_timer.stop();
-    // PG
-    ui->PG_sync->setValue(0);
-    ui->PG_decoder->setValue(0);
     // Button
     ui->PB_stop->setEnabled(false);
     ui->PB_start->setEnabled(true);
@@ -208,9 +222,11 @@ void MainWindow::on_PB_stop_clicked() {
  * @brief MainWindow::RefreshInputAudioDevices
  */
 void MainWindow::RefreshInputAudioDevices(void) {
+    // List devices
     QList<QAudioDeviceInfo> inputDevices = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-
+    // Clear box
     ui->CB_InputAudioDevice->clear();
+    // Insert items
     for (QAudioDeviceInfo d : inputDevices) {
         ui->CB_InputAudioDevice->addItem(d.deviceName(),QVariant::fromValue(d));
     }
@@ -264,30 +280,104 @@ void MainWindow::SaveSettings(void) {
  * @brief MainWindow::sync_timeout
  */
 void MainWindow::sync_timeout(void) {
-    qDebug() << "Timer out";
-    if(sync_detected_pg) {
-        if(ui->PG_sync->value() > 0) {
-            ui->PG_sync->setValue(ui->PG_sync->value()-1);
-        }
-    }
-    sync_detected_pg = true;
+    QPalette pal = ui->LB_stat_sync->palette();
+    pal.setColor(QPalette::Window, QColor(Qt::transparent));
+    ui->LB_stat_sync->setPalette(pal);
 }
 
 /**
  * @brief MainWindow::sync_detected
  */
 void MainWindow::sync_detected(void) {
-    if(ui->PG_sync->value() < UI_PG_SYNC_MAX_LIMIT) {
-        if(ui->PG_sync->value()+8 < UI_PG_SYNC_MAX_LIMIT) {
-            ui->PG_sync->setValue(ui->PG_sync->value()+8);
-        } else {
-            ui->PG_sync->setValue(UI_PG_SYNC_MAX_LIMIT);
-        }
+    // Change background color
+    QPalette pal = ui->LB_stat_sync->palette();
+    pal.setColor(QPalette::Window, QColor(Qt::green));
+    ui->LB_stat_sync->setPalette(pal);
+    // Start timer, after hit clear background
+    sync_timeout_timer.start(100);
+}
+
+/**
+ * @brief MainWindow::crc_timeout
+ */
+void MainWindow::crc_timeout(void) {
+    // Change background color
+    QPalette pal = ui->LB_stat_crc->palette();
+    pal.setColor(QPalette::Window, QColor(Qt::transparent));
+    ui->LB_stat_crc->setPalette(pal);
+}
+
+/**
+ * @brief MainWindow::crc_detected
+ * @param state
+ */
+void MainWindow::crc_detected(bool state) {
+    // Change background color
+    QPalette pal = ui->LB_stat_crc->palette();
+    if(state) {
+        pal.setColor(QPalette::Window, QColor(Qt::green));
+    } else {
+        pal.setColor(QPalette::Window, QColor(Qt::red));
     }
-    if(ui->PG_sync->value() > UI_PG_SYNC_MAX_LIMIT) {
-        ui->PG_sync->setValue(UI_PG_SYNC_MAX_LIMIT);
+    ui->LB_stat_crc->setPalette(pal);
+    // Start timer, after hit clear background
+    crc_timeout_timer.start(100);
+}
+
+/**
+ * @brief MainWindow::valid_timeout
+ */
+void MainWindow::valid_timeout(void) {
+    // Change background color
+    QPalette pal = ui->LB_stat_valid->palette();
+    pal.setColor(QPalette::Window, QColor(Qt::transparent));
+    ui->LB_stat_valid->setPalette(pal);
+}
+
+void MainWindow::valid_detected(bool state) {
+    // Change background color
+    QPalette pal = ui->LB_stat_valid->palette();
+    if(state) {
+        pal.setColor(QPalette::Window, QColor(Qt::green));
+    } else {
+        pal.setColor(QPalette::Window, QColor(Qt::red));
     }
-    sync_detected_pg = false;
+    ui->LB_stat_valid->setPalette(pal);
+    // Start timer, after hit clear background
+    valid_timeout_timer.start(100);
+}
+
+/**
+ * @brief MainWindow::net_timeout
+ */
+void MainWindow::net_timeout(void) {
+    // Change background color
+    QPalette pal = ui->LB_stat_net->palette();
+    pal.setColor(QPalette::Window, QColor(Qt::transparent));
+    ui->LB_stat_net->setPalette(pal);
+}
+
+/**
+ * @brief MainWindow::net_reply_received
+ * @param httpCode
+ */
+void MainWindow::net_reply_received(int httpCode) {
+    // Change background color
+    QPalette pal = ui->LB_stat_net->palette();
+    if((httpCode >= 100) && (httpCode <= 199)) {
+        pal.setColor(QPalette::Window, QColor(Qt::blue));
+    } else if(httpCode == 200) {
+        pal.setColor(QPalette::Window, QColor(Qt::green));
+    } else if((httpCode >= 300) && (httpCode <= 399)) {
+        pal.setColor(QPalette::Window, QColor(Qt::yellow));
+    } else if((httpCode >= 400) && (httpCode <= 499)) {
+        pal.setColor(QPalette::Window, QColor(Qt::magenta));
+    } else {
+        pal.setColor(QPalette::Window, QColor(Qt::red));
+    }
+    ui->LB_stat_net->setPalette(pal);
+    // Start timer, after hit clear background
+    net_timeout_timer.start(100);
 }
 
 /**

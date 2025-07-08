@@ -40,6 +40,8 @@ public:
     QMap<QString, QString> GetDecodedFrame();
 signals:
     void SyncReceived(void);
+    void CrcReceived(bool);
+    void ValidFrameReceived(bool);
     void PacketReceived(void);
 public slots:
 

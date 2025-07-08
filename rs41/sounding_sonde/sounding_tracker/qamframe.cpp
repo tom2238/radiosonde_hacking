@@ -434,34 +434,128 @@ void QAMFrame::DecodeFrame(FrameData *frm_dec) {
     float freq_mhz_f = ((float)(freq_mhz))/100;
     // Txpower dBm
     uint8_t tx_power = frm_dec->value[66];
+    // Data are in valid range
+    bool data_valid_range = true;
 
     // Check CRC value
     if(crcrec==crctrs) {
+        // Emit CRC state
+        emit CrcReceived(true);
         if(numSV == 0) {
             lat_f = 0.0f;
             lon_f = 0.0f;
         }
         // Save to map
-        frame_decoded["GPS_YEAR"] = QString::number(year,10);
-        frame_decoded["GPS_MONTH"] = QString::number(month,10);
-        frame_decoded["GPS_DAY"] = QString::number(day,10);
-        frame_decoded["GPS_HOUR"] = QString::number(hour,10);
-        frame_decoded["GPS_MINUTE"] = QString::number(min,10);
-        frame_decoded["GPS_SECOND"] = QString::number(sec,10);
-        frame_decoded["GPS_FIX"] = QString::number(gpsFix,10);
-        frame_decoded["GPS_NUMSV"] = QString::number(numSV,10);
-        frame_decoded["GPS_LON"] = QString::number(lon_f,'f',6);
-        frame_decoded["GPS_LAT"] = QString::number(lat_f,'f',6);
-        frame_decoded["GPS_ALT"] = QString::number(alt_f,'f',1);
-        frame_decoded["GPS_CLIMBING"] = QString::number(vspeed_f,'f',1);
-        frame_decoded["GPS_GROUNDSPEED"] = QString::number(gSpeed_f,'f',1);
-        frame_decoded["GPS_HEADING"] = QString::number(heading_f,'f',0);
-        frame_decoded["TEMPERATURE_MAIN"] = QString::number(ptu_main_sensor_f,'f',1);
+        if((year >= 1999) && (year <= 2099)) {
+            frame_decoded["GPS_YEAR"] = QString::number(year,10);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_YEAR"] = QString::number(1970,10);
+        }
+        if((month >= 1) && (month <= 12)) {
+            frame_decoded["GPS_MONTH"] = QString::number(month,10);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_MONTH"] = QString::number(1,10);;
+        }
+        if((day >= 1) && (day <= 31)) {
+            frame_decoded["GPS_DAY"] = QString::number(day,10);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_DAY"] = QString::number(1,10);
+        }
+        if((hour >= 0) && (hour <= 23)) {
+            frame_decoded["GPS_HOUR"] = QString::number(hour,10);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_HOUR"] = QString::number(0,10);
+        }
+        if((min >= 0) && (min <= 59)) {
+            frame_decoded["GPS_MINUTE"] = QString::number(min,10);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_MINUTE"] = QString::number(0,10);
+        }
+        if((sec >= 0) && (sec <= 59)) {
+            frame_decoded["GPS_SECOND"] = QString::number(sec,10);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_SECOND"] = QString::number(0,10);
+        }
+        if(gpsFix == 3) {
+            frame_decoded["GPS_FIX"] = QString::number(gpsFix,10);
+            frame_decoded["GPS_NUMSV"] = QString::number(numSV,10);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_FIX"] = QString::number(0,10);
+            frame_decoded["GPS_NUMSV"] = QString::number(0,10);
+        }
+        if((lon_f >= -180.0f) && (lon_f <= 180.0f)) {
+            frame_decoded["GPS_LON"] = QString::number(lon_f,'f',7);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_LON"] = QString::number(0.0f,'f',7);
+        }
+        if((lat_f >= -90.0f) && (lat_f <= 90.0f)) {
+            frame_decoded["GPS_LAT"] = QString::number(lat_f,'f',7);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_LAT"] = QString::number(0.0f,'f',7);
+        }
+        if((alt_f >= 0.0f) && (alt_f <= 50000.0f)) {
+            frame_decoded["GPS_ALT"] = QString::number(alt_f,'f',1);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_ALT"] = QString::number(0.0f,'f',1);
+        }
+        if((vspeed_f >= -340.0f) && (vspeed_f <= 340.0f)) {
+            frame_decoded["GPS_CLIMBING"] = QString::number(vspeed_f,'f',1);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_CLIMBING"] = QString::number(0.0f,'f',1);
+        }
+        if((gSpeed_f >= -340.0f) && (gSpeed_f <= 340.0f)) {
+            frame_decoded["GPS_GROUNDSPEED"] = QString::number(gSpeed_f,'f',1);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_GROUNDSPEED"] = QString::number(0.0f,'f',1);
+        }
+        if((heading_f >= 0.0f) && (heading_f <= 360.0f)) {
+            frame_decoded["GPS_HEADING"] = QString::number(heading_f,'f',0);
+        } else {
+            data_valid_range = false;
+            frame_decoded["GPS_HEADING"] = QString::number(0.0f,'f',0);
+        }
+        if((ptu_main_sensor_f >= -273.15f) && (ptu_main_sensor_f <= 250.0f)) {
+            frame_decoded["TEMPERATURE_MAIN"] = QString::number(ptu_main_sensor_f,'f',1);
+        } else {
+            data_valid_range = false;
+            frame_decoded["TEMPERATURE_MAIN"] = QString::number(-273.15,'f',1);
+        }
         frame_decoded["SONDE_ID"] = QString(SondeID);
         frame_decoded["FRAME_COUNT"] = QString::number(frame_cnt,10);
-        frame_decoded["ONBOARD_VOLTAGE"] = QString::number(bat_voltage_f,'f',1);
-        frame_decoded["TX_FREQUENCY"] = QString::number(freq_mhz_f,'f',3);
-        frame_decoded["TX_POWER"] = QString::number(tx_power,10);
+        if((bat_voltage_f >= 0.0f) && (bat_voltage_f <= 15.0f)) {
+            frame_decoded["ONBOARD_VOLTAGE"] = QString::number(bat_voltage_f,'f',1);
+        } else {
+            data_valid_range = false;
+            frame_decoded["ONBOARD_VOLTAGE"] = QString::number(0.0f,'f',1);
+        }
+        if((freq_mhz_f >= 137.0f) && (freq_mhz_f <= 950.0f)) {
+            frame_decoded["TX_FREQUENCY"] = QString::number(freq_mhz_f,'f',3);
+        } else {
+            data_valid_range = false;
+            frame_decoded["TX_FREQUENCY"] = QString::number(433.125f,'f',3);
+        }
+        if((tx_power >= 0) && (tx_power <= 30)) {
+            frame_decoded["TX_POWER"] = QString::number(tx_power,10);
+        } else {
+            data_valid_range = false;
+            frame_decoded["TX_POWER"] = QString::number(0,10);
+        }
+
+
+        // Check expected data range and emit Valid flag
+        emit ValidFrameReceived(data_valid_range);
 
         // Print UKHAS string
         char ukhas_msg[512];
@@ -476,6 +570,7 @@ void QAMFrame::DecodeFrame(FrameData *frm_dec) {
         fprintf(stdout,"%s\n",ukhas_msg);
     } else {
         printf("[CRC FAIL]\n");
+        emit CrcReceived(false);
     }
     fflush(stdout);
 }
