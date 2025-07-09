@@ -13,21 +13,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     // UI name
     this->setWindowTitle(APPLICATION_DISPLAY_NAME);
-    //QLocale curLocale(QLocale("cs_CZ"));
-    //QLocale::setDefault(curLocale);
+
     QDate date = QDate::currentDate();
     QString dateString = QLocale().toString(date);
 
     qDebug() << dateString;
     qDebug() << QLocale().name();
-
-    // Create objects
-    QList<double> pos;
-    pos.append(QLocale().toDouble(ui->LE_GS_lat->text()));
-    pos.append(QLocale().toDouble(ui->LE_GS_lon->text()));
-    pos.append(250.0);
-    sondehub = new QSondeHub(this,ui->LE_callsign->text(),pos,ui->LE_GS_radioType->text(),ui->LE_GS_antenna->text(),APPLICATION_NAME,APPLICATION_VERSION,2,20,5,false);
-
 
     // Set UI parts
     ui->LE_GS_lat->setValidator(new QDoubleValidator(-90.0,90.0,7));
@@ -38,6 +29,16 @@ MainWindow::MainWindow(QWidget *parent)
     ui->LB_stat_crc->setAutoFillBackground(true);
     ui->LB_stat_valid->setAutoFillBackground(true);
     ui->LB_stat_net->setAutoFillBackground(true);
+
+    // Create objects
+    QList<double> pos;
+    pos.append(QLocale().toDouble(ui->LE_GS_lat->text()));
+    pos.append(QLocale().toDouble(ui->LE_GS_lon->text()));
+    //pos.append(ui->LE_GS_lat->text().toDouble());
+    //pos.append(ui->LE_GS_lon->text().toDouble());
+    pos.append(250.0);
+    sondehub = new QSondeHub(this,ui->LE_callsign->text(),pos,ui->LE_GS_radioType->text(),ui->LE_GS_antenna->text(),APPLICATION_NAME,APP_VERSION,2,20,5,false);
+
 
     // Audio list sources
     RefreshInputAudioDevices();
@@ -82,15 +83,14 @@ MainWindow::MainWindow(QWidget *parent)
     UpdateSoundingUI();
 
 
-    // Not work !! Habitat::UploadListenerTelemetry(ui->LE_callsign->text().toLocal8Bit().data(),time(NULL),ui->LE_GS_lat->text().toFloat(),ui->LE_GS_lon->text().toFloat(),ui->LE_GS_radioType->text().toLocal8Bit().data(),ui->LE_GS_antenna->text().toLocal8Bit().data());
-
-
     // Upload station position
     if(ui->CX_habhubEnable->isChecked()) {
         sondehub->StationPositionUpload();
     }
 
-
+    QString version(GIT_VERSION);
+    QString buildDate = QStringLiteral(__DATE__) + QStringLiteral(" ") + QStringLiteral(__TIME__);
+    qDebug() << "Ver:" << version << ", bd:" << buildDate;
 }
 
 /**

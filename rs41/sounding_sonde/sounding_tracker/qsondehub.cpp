@@ -1,6 +1,7 @@
 /*
  * https://github.com/projecthorus/radiosonde_auto_rx/blob/master/auto_rx/autorx/sondehub.py
  * https://github.com/projecthorus/pysondehub/blob/main/sondehub/amateur.py
+ * https://repo.radio/VE7UWU/sdrangel/src/branch/master/sdrbase/util/sondehub.cpp
  *
  * Uploads telemetry to the 'new' SondeHub ElasticSearch cluster,
  * in the new 'universal' format descried here:

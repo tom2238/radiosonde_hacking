@@ -3,7 +3,15 @@ QT       += core gui multimedia network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
-LIBS += -lcurl
+
+GIT_VERSION = $$system(git --git-dir $$shell_quote($$PWD/../../../.git) --work-tree $$shell_quote($$PWD/../../../) describe --always --tags)
+DEFINES += GIT_VERSION=$$shell_quote(\"$$GIT_VERSION\")
+GIT_COMMIT_COUNT = $$system(git rev-list --count --all)
+DEFINES += GIT_COMMIT_COUNT=$$shell_quote(\"$$GIT_COMMIT_COUNT\")
+
+VERSION = 0.1.0.$$GIT_COMMIT_COUNT
+DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+
 INCLUDEPATH += $$PWD/include
 include(QHexView.pri)
 
@@ -20,9 +28,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     amframe.cpp \
-    habitat.cpp \
-    hb_base64.cpp \
-    hb_sha256.cpp \
     main.cpp \
     mainwindow.cpp \
     qamframe.cpp \
@@ -31,9 +36,6 @@ SOURCES += \
 
 HEADERS += \
     amframe.h \
-    habitat.h \
-    hb_base64.h \
-    hb_sha256.h \
     mainwindow.h \
     qamframe.h \
     qsondehub.h \
