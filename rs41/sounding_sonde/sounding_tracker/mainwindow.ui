@@ -62,7 +62,7 @@
                </font>
               </property>
               <property name="text">
-               <string>Zem. šířka</string>
+               <string>Zem. délka</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignCenter</set>
@@ -107,7 +107,14 @@
              </widget>
             </item>
             <item row="4" column="3">
-             <widget class="QLineEdit" name="LE_GS_lon"/>
+             <widget class="QLineEdit" name="LE_GS_lon">
+              <property name="locale">
+               <locale language="C" country="AnyCountry"/>
+              </property>
+              <property name="maxLength">
+               <number>32</number>
+              </property>
+             </widget>
             </item>
             <item row="1" column="1">
              <widget class="QLabel" name="label_2">
@@ -176,7 +183,7 @@
                </font>
               </property>
               <property name="text">
-               <string>Zem. délka</string>
+               <string>Zem. šířka</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignCenter</set>
@@ -184,7 +191,14 @@
              </widget>
             </item>
             <item row="3" column="3">
-             <widget class="QLineEdit" name="LE_GS_lat"/>
+             <widget class="QLineEdit" name="LE_GS_lat">
+              <property name="locale">
+               <locale language="Burmese" country="Myanmar"/>
+              </property>
+              <property name="maxLength">
+               <number>32</number>
+              </property>
+             </widget>
             </item>
             <item row="2" column="3">
              <widget class="QLineEdit" name="LE_GS_comment"/>
@@ -215,6 +229,12 @@
                 </property>
                 <property name="text">
                  <string>APRS</string>
+                </property>
+                <property name="checkable">
+                 <bool>false</bool>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
                 </property>
                </widget>
               </item>
@@ -666,6 +686,15 @@
          <attribute name="title">
           <string>Log</string>
          </attribute>
+         <layout class="QGridLayout" name="gridLayout_22">
+          <item row="0" column="0">
+           <layout class="QGridLayout" name="gridLayout_21">
+            <item row="0" column="0">
+             <widget class="QTextEdit" name="TE_logArea"/>
+            </item>
+           </layout>
+          </item>
+         </layout>
         </widget>
        </widget>
       </item>

@@ -29,9 +29,7 @@ QAMFrame::QAMFrame(QObject *parent) : QObject(parent) {
     frame_decoded.insert("ONBOARD_VOLTAGE","0.0");
     frame_decoded.insert("TX_FREQUENCY","433.125");
     frame_decoded.insert("TX_POWER","10");
-
-    qDebug() << "QMap list" << frame_decoded.value("GPS_YEAR") << "s:" << frame_decoded.size();
-
+    frame_decoded.insert("VALID","false");
 }
 
 /**
@@ -265,7 +263,6 @@ bool QAMFrame::ReadAudioSample(int sample_byte) {
         break;
     case 0:
         //qDebug() << "B_done";
-        //printf("%d",bit);
         //qDebug() << bit << "," << bit_len;
         for (int idx = 0;idx < bit_len;idx++) {
             amframe->IncHeadPos(&current_head);
@@ -299,15 +296,13 @@ bool QAMFrame::ReadAudioSample(int sample_byte) {
                         //if(optsettings.ecc_code != 0) {
                         //    Frame_RSDecode(&frame);
                         //}
-                        amframe->PrintFrameData(current_frame,ecc_code);
+                        //amframe->PrintFrameData(current_frame,ecc_code);
                         previous_frame = current_frame;
                         emit PacketReceived();
-                        fflush(stdout);
                     }
                 }
             }
         }
-        //fflush(stdout);
         break;
     default:
         break;
@@ -553,26 +548,17 @@ void QAMFrame::DecodeFrame(FrameData *frm_dec) {
             frame_decoded["TX_POWER"] = QString::number(0,10);
         }
 
-
         // Check expected data range and emit Valid flag
-        emit ValidFrameReceived(data_valid_range);
-
-        // Print UKHAS string
-        char ukhas_msg[512];
-        int chars_writed = snprintf(ukhas_msg,sizeof(ukhas_msg),"$$%s,%d,%02d:%02d:%02d,%.7f,%.7f,%.0f,%.1f,%.1f,%.1f,%.0f,%.1f,%d,%.3f MHz",SondeID,frame_cnt,hour,min,sec,lat_f,lon_f,alt_f,gSpeed_f,ptu_main_sensor_f,bat_voltage_f,heading_f,vspeed_f,numSV,freq_mhz_f);
-        if(chars_writed < sizeof(ukhas_msg)) {
-            // CRC is calculated in habitat_upload
-            //ukhas_crc = ukhas_CRC16_checksum(ukhas_msg);
+        if(data_valid_range) {
+            frame_decoded["VALID"] = "1";
         } else {
-            fprintf(stderr,"snprinf buffer length error\n");
+            frame_decoded["VALID"] = "0";
         }
-        //fprintf(stdout,"%s*%04x\n",ukhas_msg,ukhas_crc);
-        fprintf(stdout,"%s\n",ukhas_msg);
+        emit ValidFrameReceived(data_valid_range);
     } else {
-        printf("[CRC FAIL]\n");
+        qDebug() << "[CRC FAIL]";
         emit CrcReceived(false);
     }
-    fflush(stdout);
 }
 
 /**

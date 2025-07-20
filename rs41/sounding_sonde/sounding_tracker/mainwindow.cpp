@@ -14,15 +14,19 @@ MainWindow::MainWindow(QWidget *parent)
     // UI name
     this->setWindowTitle(APPLICATION_DISPLAY_NAME);
 
-    QDate date = QDate::currentDate();
-    QString dateString = QLocale().toString(date);
-
-    qDebug() << dateString;
-    qDebug() << QLocale().name();
+    // Load settings
+    LoadSettings();
 
     // Set UI parts
-    ui->LE_GS_lat->setValidator(new QDoubleValidator(-90.0,90.0,7));
-    ui->LE_GS_lon->setValidator(new QDoubleValidator(-180.0,180.0,7));
+    static QDoubleValidator posLatValid, posLonValid;
+    posLatValid.setLocale(QLocale::system());
+    posLonValid.setLocale(QLocale::system());
+    posLatValid.setRange(-90.0,90.0,7);
+    posLonValid.setRange(-180.0,180.0,7);
+    posLatValid.setNotation(QDoubleValidator::StandardNotation);
+    posLonValid.setNotation(QDoubleValidator::StandardNotation);
+    ui->LE_GS_lat->setValidator(&posLatValid);
+    ui->LE_GS_lon->setValidator(&posLonValid);
     packet_hex_document = QHexDocument::create(this);
     ui->HX_packet_view->setDocument(packet_hex_document);
     ui->LB_stat_sync->setAutoFillBackground(true);
@@ -30,15 +34,40 @@ MainWindow::MainWindow(QWidget *parent)
     ui->LB_stat_valid->setAutoFillBackground(true);
     ui->LB_stat_net->setAutoFillBackground(true);
 
+    // Label selectable
+    ui->label_11->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_12->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_13->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_14->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_15->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_17->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_18->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_20->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_21->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_24->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_26->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->label_28->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_frequency->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_power->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_id->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_frame->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_voltage->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_gpstime->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_temperature->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_gps_lat->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_gps_lon->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_gps_alt->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_gps_groundspeed->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_gps_climbing->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_gps_heading->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->LB_rx_gps_numsv->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
     // Create objects
     QList<double> pos;
-    pos.append(QLocale().toDouble(ui->LE_GS_lat->text()));
-    pos.append(QLocale().toDouble(ui->LE_GS_lon->text()));
-    //pos.append(ui->LE_GS_lat->text().toDouble());
-    //pos.append(ui->LE_GS_lon->text().toDouble());
-    pos.append(250.0);
-    sondehub = new QSondeHub(this,ui->LE_callsign->text(),pos,ui->LE_GS_radioType->text(),ui->LE_GS_antenna->text(),APPLICATION_NAME,APP_VERSION,2,20,5,false);
-
+    pos.append(QLocale().system().toDouble(ui->LE_GS_lat->text()));
+    pos.append(QLocale().system().toDouble(ui->LE_GS_lon->text()));
+    pos.append(STATION_POSITION_ALT);
+    sondehub = new QSondeHub(this,ui->LE_callsign->text(),pos,ui->LE_GS_radioType->text(),ui->LE_GS_antenna->text(),ui->LE_GS_comment->text(),APPLICATION_NAME,APP_VERSION,2,20,5,false);
 
     // Audio list sources
     RefreshInputAudioDevices();
@@ -49,12 +78,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&crc_timeout_timer,&QTimer::timeout,this,&MainWindow::crc_timeout);
     connect(&valid_timeout_timer,&QTimer::timeout,this,&MainWindow::valid_timeout);
     connect(&net_timeout_timer,&QTimer::timeout,this,&MainWindow::net_timeout);
+    connect(&station_position_timer,&QTimer::timeout,this,&MainWindow::station_position_timeout);
     // Decoder
     connect(&frame_decoder,&QAMFrame::SyncReceived,this,&MainWindow::sync_detected);
     connect(&frame_decoder,&QAMFrame::CrcReceived,this,&MainWindow::crc_detected);
     connect(&frame_decoder,&QAMFrame::ValidFrameReceived,this,&MainWindow::valid_detected);
     connect(sondehub,&QSondeHub::NetworkReplyReceived,this,&MainWindow::net_reply_received);
     connect(&frame_decoder,&QAMFrame::PacketReceived,this,&MainWindow::packet_received);
+    // Logging
+    connect(sondehub, &QSondeHub::LogUI, this, &MainWindow::ConsoleLogSignal);
 
     // Sync timer stop
     sync_timeout_timer.stop();
@@ -72,25 +104,29 @@ MainWindow::MainWindow(QWidget *parent)
     net_timeout_timer.stop();
     net_timeout_timer.setSingleShot(true);
 
+    // Station position upload timer
+    station_position_timer.stop();
+    station_position_timer.setSingleShot(false);
+    station_position_timer.setInterval(15*60*1000); // 15 minutes
+
     // Buttons config
     ui->PB_stop->setEnabled(false);
     ui->PB_start->setEnabled(true);
 
-    // Load settings
-    LoadSettings();
-
     // Get decoded packet and update UI
-    UpdateSoundingUI();
-
+    UpdateSoundingUI(false);
 
     // Upload station position
     if(ui->CX_habhubEnable->isChecked()) {
         sondehub->StationPositionUpload();
+        station_position_timer.start();
     }
 
     QString version(GIT_VERSION);
     QString buildDate = QStringLiteral(__DATE__) + QStringLiteral(" ") + QStringLiteral(__TIME__);
     qDebug() << "Ver:" << version << ", bd:" << buildDate;
+    ConsoleLog("Start",MainWindow::LOG_INFO);
+    ConsoleLog("App: " + QString(APPLICATION_NAME) + ", Ver: " + version + ", bd: " + buildDate, MainWindow::LOG_INFO);
 }
 
 /**
@@ -140,8 +176,6 @@ void MainWindow::on_PB_start_clicked() {
     connect(mAudioIn, &QAudioInput::stateChanged,this, &MainWindow::stateChangeAudioIn);
 
     // Init frame and head buffer
-
-
     mInputBuffer.open(QBuffer::ReadWrite);
     mAudioIn->start(&mInputBuffer);
 
@@ -156,6 +190,8 @@ void MainWindow::on_PB_start_clicked() {
     ui->LE_GS_antenna->setEnabled(false);
     ui->LE_GS_comment->setEnabled(false);
     ui->LE_GS_radioType->setEnabled(false);
+
+    ConsoleLog("Start decoder success",MainWindow::LOG_INFO);
 }
 
 /**
@@ -165,7 +201,6 @@ void MainWindow::processAudioIn() {
     mInputBuffer.seek(0);
     QByteArray ba = mInputBuffer.readAll();
     int sample_byte;
-
 
     int num_samples = ba.length() / 2;
     int b_pos = 0;
@@ -185,7 +220,6 @@ void MainWindow::processAudioIn() {
 
     mInputBuffer.buffer().clear();
     mInputBuffer.seek(0);
-
 }
 
 /**
@@ -193,7 +227,7 @@ void MainWindow::processAudioIn() {
  * @param s
  */
 void MainWindow::stateChangeAudioIn(QAudio::State s) {
-    qDebug() << "State change: " << s;
+    //qDebug() << "State change: " << s;
 }
 
 /**
@@ -216,6 +250,7 @@ void MainWindow::on_PB_stop_clicked() {
     ui->LE_GS_antenna->setEnabled(true);
     ui->LE_GS_comment->setEnabled(true);
     ui->LE_GS_radioType->setEnabled(true);
+    ConsoleLog("Stop decoder success",MainWindow::LOG_INFO);
 }
 
 /**
@@ -381,6 +416,16 @@ void MainWindow::net_reply_received(int httpCode) {
 }
 
 /**
+ * @brief MainWindow::station_position_timeout
+ */
+void MainWindow::station_position_timeout(void) {
+    // Upload station position
+    if(ui->CX_habhubEnable->isChecked()) {
+        sondehub->StationPositionUpload();
+    }
+}
+
+/**
  * @brief MainWindow::packet_received
  */
 void MainWindow::packet_received(void) {
@@ -395,13 +440,13 @@ void MainWindow::packet_received(void) {
     // Decode packet
     frame_decoder.DecodeFrame(&frm_last);
     // Get decoded packet and update UI
-    UpdateSoundingUI();
+    UpdateSoundingUI(true);
 }
 
 /**
  * @brief MainWindow::UpdateSoundingUI
  */
-void MainWindow::UpdateSoundingUI(void) {
+void MainWindow::UpdateSoundingUI(bool net_upload_enable) {
     QMap<QString, QString> rec_data;
     rec_data = frame_decoder.GetDecodedFrame();
     QString gps_year = rec_data.value("GPS_YEAR");
@@ -426,4 +471,164 @@ void MainWindow::UpdateSoundingUI(void) {
     ui->LB_rx_voltage->setText(rec_data.value("ONBOARD_VOLTAGE") + " V");
     ui->LB_rx_frequency->setText(rec_data.value("TX_FREQUENCY") + " MHz");
     ui->LB_rx_power->setText(rec_data.value("TX_POWER") + " dBm");
+
+    // Send data to sondehub
+    if(net_upload_enable) {
+        if(ui->CX_habhubEnable->isChecked()) {
+            QDateTime dt = QDateTime::currentDateTime();
+            sondehub->TelemetryUpload(rec_data, dt);
+        }
+    }
+
+}
+
+/**
+ * @brief MainWindow::ConsoleLog
+ * @param string
+ * @param type_e
+ */
+void MainWindow::ConsoleLog(QString string, MainWindow::LogType_e type_e) {
+    // Zmena ukazatele na konec
+    QTextCursor TE_cursor(ui->TE_logArea->textCursor());
+    TE_cursor.movePosition(QTextCursor::End);
+    ui->TE_logArea->setTextCursor(TE_cursor);
+    // Aktualni cas
+    QDateTime dateTime = dateTime.currentDateTime();
+    //qDebug() << dateTime.toString("HH:mm:ss");
+    QString logStr;
+    switch (type_e) {
+    case LOG_INFO:
+        logStr = " INF ";
+        break;
+    case LOG_DEBUG:
+        logStr = " DBG ";
+        break;
+    case LOG_WARNING:
+        logStr = " WRN ";
+        break;
+    case LOG_CRITICAL:
+        logStr = " CRT ";
+        break;
+    }
+    // Vypis na konzoli
+    ui->TE_logArea->insertPlainText(dateTime.toString("HH:mm:ss") + logStr + string + "\n");
+    // Posun textu na konec
+    //ui->TE_logArea->verticalScrollBar()->setValue(ui->TE_logArea->verticalScrollBar()->maximum());
+}
+
+/**
+ * @brief MainWindow::ConsoleLogSignal
+ * @param string
+ * @param type
+ */
+void MainWindow::ConsoleLogSignal(QString string, qint8 type) {
+    MainWindow::LogType_e log;
+    switch(type) {
+    case 0:
+        log = LOG_INFO;
+        break;
+    case 2:
+        log = LOG_WARNING;
+        break;
+    case 3:
+        log = LOG_CRITICAL;
+        break;
+    default:
+        log = LOG_DEBUG;
+        break;
+    }
+
+    ConsoleLog(string,log);
+}
+
+/**
+ * @brief MainWindow::on_LE_callsign_textChanged
+ * @param arg1
+ */
+void MainWindow::on_LE_callsign_textChanged(const QString &arg1) {
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    application_setting.setValue("Station/Callsign",arg1);
+    if(sondehub) {
+        sondehub->UpdateCallsign(arg1);
+    }
+
+}
+
+/**
+ * @brief MainWindow::on_LE_GS_comment_textChanged
+ * @param arg1
+ */
+void MainWindow::on_LE_GS_comment_textChanged(const QString &arg1) {
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    application_setting.setValue("Station/Comment",arg1);
+    if(sondehub) {
+        sondehub->UpdateEmail(arg1);
+    }
+}
+
+/**
+ * @brief MainWindow::on_LE_GS_lat_textChanged
+ * @param arg1
+ */
+void MainWindow::on_LE_GS_lat_textChanged(const QString &arg1) {
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    application_setting.setValue("Station/Latitude",arg1);
+    if(sondehub) {
+        sondehub->UpdateStationPosition(QLocale().system().toDouble(ui->LE_GS_lat->text()),QLocale().system().toDouble(ui->LE_GS_lon->text()),STATION_POSITION_ALT);
+    }
+}
+
+/**
+ * @brief MainWindow::on_LE_GS_lon_textChanged
+ * @param arg1
+ */
+void MainWindow::on_LE_GS_lon_textChanged(const QString &arg1) {
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    application_setting.setValue("Station/Longitude",arg1);
+    if(sondehub) {
+        sondehub->UpdateStationPosition(QLocale().system().toDouble(ui->LE_GS_lat->text()),QLocale().system().toDouble(ui->LE_GS_lon->text()),STATION_POSITION_ALT);
+    }
+}
+
+/**
+ * @brief MainWindow::on_LE_GS_antenna_textChanged
+ * @param arg1
+ */
+void MainWindow::on_LE_GS_antenna_textChanged(const QString &arg1) {
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    application_setting.setValue("Station/Antenna",arg1);
+    if(sondehub) {
+        sondehub->UpdateAntenna(arg1);
+    }
+}
+
+/**
+ * @brief MainWindow::on_LE_GS_radioType_textChanged
+ * @param arg1
+ */
+void MainWindow::on_LE_GS_radioType_textChanged(const QString &arg1) {
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    application_setting.setValue("Station/Radio",arg1);
+    if(sondehub) {
+        sondehub->UpdateRadio(arg1);
+    }
+}
+
+/**
+ * @brief MainWindow::on_CX_habhubEnable_stateChanged
+ * @param arg1
+ */
+void MainWindow::on_CX_habhubEnable_stateChanged(int arg1) {
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    application_setting.setValue("Feed/SondeHub",ui->CX_habhubEnable->isChecked());
+    if(arg1 == Qt::Unchecked) {
+        // Unchecked
+        station_position_timer.stop();
+    } else {
+        // Checked or partialy checked
+        station_position_timer.start();
+        if(sondehub) {
+            sondehub->StationPositionUpload();
+        }
+    }
 }

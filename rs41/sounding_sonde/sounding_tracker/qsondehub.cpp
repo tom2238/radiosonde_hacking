@@ -28,6 +28,7 @@ QSondeHub::QSondeHub(QObject *parent,
                      QList<double> uploader_position_p,
                      QString uploader_radio_p,
                      QString uploader_antenna_p,
+                     QString uploader_email_p,
                      QString software_name_p,
                      QString software_version_p,
                      int upload_rate_p,
@@ -40,6 +41,7 @@ QSondeHub::QSondeHub(QObject *parent,
     uploader_position = uploader_position_p;
     uploader_radio = uploader_radio_p;
     uploader_antenna = uploader_antenna_p;
+    uploader_email = uploader_email_p;
     software_name = software_name_p;
     software_version = software_version_p;
     upload_rate = upload_rate_p;
@@ -57,8 +59,8 @@ QSondeHub::QSondeHub(QObject *parent,
 
     // New network manager
     sondehub_netman = new QNetworkAccessManager(this);
-    auto stat_con = connect(sondehub_netman, SIGNAL(finished(QNetworkReply*)), this, SLOT(replyFinished(QNetworkReply*)));
-   // qDebug() << "connect" << stat_con;
+    connect(sondehub_netman, SIGNAL(finished(QNetworkReply*)), this, SLOT(replyFinished(QNetworkReply*)));
+    return;
 }
 
 /**
@@ -66,6 +68,7 @@ QSondeHub::QSondeHub(QObject *parent,
  */
 QSondeHub::~QSondeHub() {
     delete sondehub_netman;
+    return;
 }
 
 /**
@@ -104,16 +107,13 @@ void QSondeHub::StationPositionUpload(void) {
            {"uploader_position", position},
            {"uploader_radio", uploader_radio},
            {"uploader_antenna", uploader_antenna},
-           {"uploader_contact_email", "mail@example.com"},
+           {"uploader_contact_email", uploader_email},
            {"mobile", false}
        };
 
-
-
     QJsonDocument json_position_doc(obj);
-    QByteArray json_post_data = json_position_doc.toJson();
-    qDebug().noquote() << json_post_data;
-
+    QByteArray json_post_data = json_position_doc.toJson(QJsonDocument::Compact);
+    //qDebug().noquote() << json_post_data;
 
     QUrl url(SONDEHUB_STATION_POSITION_URL);
     QNetworkRequest request(url);
@@ -121,19 +121,85 @@ void QSondeHub::StationPositionUpload(void) {
     request.setHeader(QNetworkRequest::ContentLengthHeader, QByteArray::number(json_post_data.size()));
     request.setHeader(QNetworkRequest::UserAgentHeader, software_name + "-V:" + software_version);
 
-    qDebug() << "Reply url:" << request.url().toString();
-
-    //qDebug() << QSslSocket::sslLibraryBuildVersionString();
-    //qDebug() << QSslSocket::sslLibraryVersionString();
-
-    //QObject::connect(net_access, &QNetworkAccessManager::finished, net_access, &QNetworkAccessManager::deleteLater);
-    //QObject::connect(net_access, &QNetworkAccessManager::finished, reply, &QNetworkReply::deleteLater);
-
     sondehub_netman->put(request, json_post_data);
+    return;
+}
 
-    //sondehub_netman->get(request);
+/**
+ * @brief QSondeHub::TelemetryUpload
+ * @param frame
+ */
+void QSondeHub::TelemetryUpload(QMap<QString, QString> frame, QDateTime timeReceived) {
+    qDebug() << "Valid frame" << frame.value("VALID").toUInt();
+    // We have invalid data then return
+    if(frame.value("VALID").toUInt() == 0) {
+        return;
+    }
+    // If valid continue
 
-    qDebug() << "End";
+    QJsonArray uploaderPos {
+        QString::number(uploader_position.at(0), 'f', 7).toDouble(),
+        QString::number(uploader_position.at(1), 'f', 7).toDouble(),
+        QString::number(uploader_position.at(2), 'f', 1).toDouble()
+    };
+
+    QJsonObject obj {
+        {"software_name", software_name},
+        {"software_version", software_version},
+        {"uploader_callsign", uploader_callsign},
+        {"time_received", timeReceived.toUTC().toString("yyyy-MM-ddTHH:mm:ss.zzz000Z")},
+        {"uploader_position", uploaderPos}
+    };
+
+    obj.insert("frame", frame.value("FRAME_COUNT").toInt());
+    obj.insert("payload_callsign", frame.value("SONDE_ID"));
+    obj.insert("batt", frame.value("ONBOARD_VOLTAGE").toFloat());
+    obj.insert("ext_temperature", frame.value("TEMPERATURE_MAIN").toFloat());
+
+    // For develop only
+    if(developer_mode) {
+        obj.insert("dev","true");
+    }
+
+    QDateTime gpsDateTime;
+    QDate gpsDate;
+    QTime gpsTime;
+    gpsDate.setDate(frame.value("GPS_YEAR").toInt(),frame.value("GPS_MONTH").toInt(),frame.value("GPS_DAY").toInt());
+    gpsTime.setHMS(frame.value("GPS_HOUR").toInt(),frame.value("GPS_MINUTE").toInt(),frame.value("GPS_SECOND").toInt());
+    gpsDateTime.setDate(gpsDate);
+    gpsDateTime.setTime(gpsTime);
+    obj.insert("datetime", gpsDateTime.toUTC().addSecs(18).toString("yyyy-MM-ddTHH:mm:ss.zzz000Z")); // +18 adjusts UTC to GPS time
+
+    obj.insert("lat", frame.value("GPS_LAT").toFloat());
+    obj.insert("lon", frame.value("GPS_LON").toFloat());
+    obj.insert("alt", frame.value("GPS_ALT").toFloat());
+    obj.insert("vel_h", frame.value("GPS_GROUNDSPEED"));
+    obj.insert("vel_v", frame.value("GPS_CLIMBING"));
+    obj.insert("heading", frame.value("GPS_HEADING").toFloat());
+    obj.insert("sats", frame.value("GPS_NUMSV").toInt());
+
+    obj.insert("tx_frequency", frame.value("TX_FREQUENCY").toFloat());
+    obj.insert("modulation","FM");
+    obj.insert("baud_rate","4800");
+
+    QJsonArray payloads {
+        obj
+    };
+
+    QJsonDocument doc(payloads);
+    QByteArray data = doc.toJson(QJsonDocument::Compact);
+    //qDebug().noquote() << data;
+
+    QUrl url(QString(SONDEHUB_URL));
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setHeader(QNetworkRequest::UserAgentHeader, software_name + "-V:" + software_version);
+    request.setRawHeader("Date", QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs).toLatin1());
+    request.setHeader(QNetworkRequest::ContentLengthHeader, QByteArray::number(data.size()));
+    request.setRawHeader("accept","text/plain");
+
+    sondehub_netman->put(request, data);
+    return;
 }
 
 /**
@@ -149,7 +215,50 @@ void QSondeHub::replyFinished (QNetworkReply *reply) {
             qDebug() << reply->errorString();
             qDebug() << httpStatusCode;
             qDebug().noquote() << reply->readAll();
+            QString erro;
+            erro.append("Network error. ");
+            erro.append(reply->errorString());
+            erro.append(httpStatusCode);
+            erro.append(reply->readAll());
+            emit LogUI(erro,2);
         } else {
+            QByteArray bytes = reply->readAll();
+            QJsonDocument document = QJsonDocument::fromJson(bytes);
+            if (document.isObject()) {
+                QJsonObject obj = document.object();
+                if (obj.contains(QStringLiteral("message"))) {
+                    QString message = obj.value(QStringLiteral("message")).toString();
+                    qWarning() << "SondeHub message:" << message;
+                    emit LogUI("SondeHub message:" + message,2);
+                }
+                if (obj.contains(QStringLiteral("errors")))   {
+                    QJsonArray errors = obj.value(QStringLiteral("errors")).toArray();
+                    for (auto errorObjRef : errors)   {
+                        QJsonObject errorObj = errorObjRef.toObject();
+                        if (errorObj.contains(QStringLiteral("error_message")))   {
+                            QString errorMessage = errorObj.value(QStringLiteral("error_message")).toString();
+                            qWarning() << "SondeHub error:" << errorMessage;
+                            emit LogUI("SondeHub error:" + errorMessage,2);
+                            if (errorObj.contains(QStringLiteral("payload")))   {
+                                QJsonObject payload = errorObj.value(QStringLiteral("payload")).toObject();
+                                qWarning() << "SondeHub error:" << QJsonDocument(payload);
+                                emit LogUI("SondeHub error:" + QJsonDocument(payload).toJson(),2);
+                            }
+                        } else {
+                            qWarning() << "SondeHub error:" << QJsonDocument(errorObj);
+                            emit LogUI("SondeHub error:" + QJsonDocument(errorObj).toJson(),2);
+                        }
+                    }
+                }
+            } else if (document.isArray()) {
+                QJsonArray array = document.array();
+                for (auto arrayRef : array) {
+                    qDebug() << "SondeHub::handleReply:" << bytes;
+                }
+            } else {
+                qDebug() << "SondeHub::handleReply:" << bytes;
+            }
+
             qDebug() << reply->header(QNetworkRequest::ContentTypeHeader).toString();
             qDebug() << reply->header(QNetworkRequest::LastModifiedHeader).toDateTime().toString();
             qDebug() << reply->header(QNetworkRequest::ContentLengthHeader).toULongLong();
@@ -162,6 +271,7 @@ void QSondeHub::replyFinished (QNetworkReply *reply) {
     } else {
         qDebug() << "SondeHub::handleReply: reply is null";
     }
+    return;
 }
 
 /**
@@ -177,5 +287,41 @@ void QSondeHub::UpdateStationPosition(double lat, double lon, double alt) {
     uploader_position.append(lat);
     uploader_position.append(lon);
     uploader_position.append(alt);
+    return;
+}
+
+/**
+ * @brief QSondeHub::UpdateCallsign
+ * @param call
+ */
+void QSondeHub::UpdateCallsign(QString call) {
+    uploader_callsign = call;
+    return;
+}
+
+/**
+ * @brief QSondeHub::UpdateAntenna
+ * @param antenna
+ */
+void QSondeHub::UpdateAntenna(QString antenna) {
+    uploader_antenna = antenna;
+    return;
+}
+
+/**
+ * @brief QSondeHub::UpdateRadio
+ * @param radio
+ */
+void QSondeHub::UpdateRadio(QString radio) {
+    uploader_radio = radio;
+    return;
+}
+
+/**
+ * @brief QSondeHub::UpdateEmail
+ * @param email
+ */
+void QSondeHub::UpdateEmail(QString email) {
+    uploader_email = email;
     return;
 }

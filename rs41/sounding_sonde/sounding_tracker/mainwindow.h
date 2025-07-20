@@ -23,6 +23,7 @@
 #define VAISALA_MODEM_BAUDRATE 4800
 #define VAISALA_MODEM_PACKET_SIZE 62
 #define VAISALA_ECC_MODE 0
+#define STATION_POSITION_ALT 250.0
 
 // Progress bar limit
 #define UI_PG_SYNC_MAX_LIMIT 64
@@ -38,6 +39,13 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    typedef enum {
+        LOG_INFO,
+        LOG_DEBUG,
+        LOG_WARNING,
+        LOG_CRITICAL
+    }LogType_e;
+    Q_ENUM(LogType_e)
 
 private slots:
     // Audio
@@ -55,12 +63,29 @@ private slots:
     void valid_detected(bool state);
     void net_timeout();
     void net_reply_received(int httpCode);
+    void station_position_timeout();
     // Packet
     void packet_received();
+    // Logging
+    void ConsoleLogSignal(QString, qint8);
+
+    void on_LE_callsign_textChanged(const QString &arg1);
+
+    void on_LE_GS_comment_textChanged(const QString &arg1);
+
+    void on_LE_GS_lat_textChanged(const QString &arg1);
+
+    void on_LE_GS_lon_textChanged(const QString &arg1);
+
+    void on_LE_GS_antenna_textChanged(const QString &arg1);
+
+    void on_LE_GS_radioType_textChanged(const QString &arg1);
+
+    void on_CX_habhubEnable_stateChanged(int arg1);
 
 private:
     // vars
-    Ui::MainWindow *ui;
+    Ui::MainWindow *ui = nullptr;
     QAudioInput *mAudioIn = nullptr;
     QBuffer  mInputBuffer;
     QAMFrame frame_decoder;
@@ -68,12 +93,14 @@ private:
     QTimer crc_timeout_timer;
     QTimer valid_timeout_timer;
     QTimer net_timeout_timer;
-    QHexDocument *packet_hex_document;
-    QSondeHub *sondehub;
+    QTimer station_position_timer;
+    QHexDocument *packet_hex_document = nullptr;
+    QSondeHub *sondehub = nullptr;
     // funcs
     void RefreshInputAudioDevices(void);
     void LoadSettings(void);
     void SaveSettings(void);
-    void UpdateSoundingUI(void);
+    void UpdateSoundingUI(bool net_upload_enable);
+    void ConsoleLog(QString string, MainWindow::LogType_e type_e);
 };
 #endif // MAINWINDOW_H
