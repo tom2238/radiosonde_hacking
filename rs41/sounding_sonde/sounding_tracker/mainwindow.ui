@@ -33,8 +33,133 @@
           <string>Nastavení</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_4">
-          <item row="1" column="0">
+          <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_2">
+            <item row="2" column="1">
+             <widget class="QLabel" name="label_7">
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Komentář</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QLabel" name="label_3">
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Zem. šířka</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="2" colspan="2">
+             <widget class="QLineEdit" name="LE_GS_antenna"/>
+            </item>
+            <item row="4" column="2" colspan="2">
+             <widget class="QLineEdit" name="LE_GS_lon">
+              <property name="locale">
+               <locale language="C" country="AnyCountry"/>
+              </property>
+              <property name="maxLength">
+               <number>32</number>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QLabel" name="label">
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Zvukové zařízení</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QLabel" name="label_4">
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Anténa</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QLabel" name="label_2">
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Callsign</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="2" colspan="2">
+             <widget class="QLineEdit" name="LE_GS_lat">
+              <property name="locale">
+               <locale language="Burmese" country="Myanmar"/>
+              </property>
+              <property name="maxLength">
+               <number>32</number>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="3">
+             <widget class="QLineEdit" name="LE_dirSelect">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="2">
+             <widget class="QPushButton" name="PB_dirSelect">
+              <property name="text">
+               <string>Výběr</string>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="2" colspan="2">
+             <widget class="QLineEdit" name="LE_GS_radioType"/>
+            </item>
             <item row="6" column="1">
              <widget class="QLabel" name="label_6">
               <property name="font">
@@ -69,71 +194,24 @@
               </property>
              </widget>
             </item>
-            <item row="5" column="1">
-             <widget class="QLabel" name="label_4">
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-                <weight>75</weight>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Anténa</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="3">
-             <widget class="QLineEdit" name="LE_GS_radioType"/>
-            </item>
-            <item row="2" column="1">
-             <widget class="QLabel" name="label_7">
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-                <weight>75</weight>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Komentář</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="3">
-             <widget class="QLineEdit" name="LE_GS_lon">
-              <property name="locale">
-               <locale language="C" country="AnyCountry"/>
-              </property>
-              <property name="maxLength">
-               <number>32</number>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QLabel" name="label_2">
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-                <weight>75</weight>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Callsign</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-             </widget>
-            </item>
             <item row="7" column="1">
+             <widget class="QLabel" name="label_8">
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Složka dat</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="8" column="1">
              <widget class="QLabel" name="label_10">
               <property name="font">
                <font>
@@ -150,64 +228,29 @@
               </property>
              </widget>
             </item>
-            <item row="0" column="3">
-             <widget class="QComboBox" name="CB_InputAudioDevice"/>
-            </item>
-            <item row="5" column="3">
-             <widget class="QLineEdit" name="LE_GS_antenna"/>
-            </item>
-            <item row="0" column="1">
-             <widget class="QLabel" name="label">
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-                <weight>75</weight>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Zvukové zařízení</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QLabel" name="label_3">
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-                <weight>75</weight>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Zem. šířka</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="3">
-             <widget class="QLineEdit" name="LE_GS_lat">
-              <property name="locale">
-               <locale language="Burmese" country="Myanmar"/>
-              </property>
-              <property name="maxLength">
-               <number>32</number>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="3">
+            <item row="2" column="2" colspan="2">
              <widget class="QLineEdit" name="LE_GS_comment"/>
             </item>
-            <item row="1" column="3">
+            <item row="1" column="2" colspan="2">
              <widget class="QLineEdit" name="LE_callsign"/>
             </item>
-            <item row="7" column="3">
+            <item row="0" column="2" colspan="2">
+             <widget class="QComboBox" name="CB_InputAudioDevice"/>
+            </item>
+            <item row="8" column="2" colspan="2">
              <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <item>
+               <widget class="QCheckBox" name="CX_logFileEnable">
+                <property name="font">
+                 <font>
+                  <pointsize>12</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Logovací soubor</string>
+                </property>
+               </widget>
+              </item>
               <item>
                <widget class="QCheckBox" name="CX_habhubEnable">
                 <property name="font">
@@ -216,7 +259,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>Sondehub</string>
+                 <string>SondeHub</string>
                 </property>
                </widget>
               </item>

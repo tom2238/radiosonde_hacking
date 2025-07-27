@@ -270,8 +270,8 @@ bool QAMFrame::ReadAudioSample(int sample_byte) {
             if (!header_found) {
                 if (amframe->FrameHeadCompare(current_head) >= HEAD_LEN) {
                     header_found = true;
-                    printf("Header found\n");
-                    fflush(stdout);
+                    //printf("Header found\n");
+                    //fflush(stdout);
                     emit SyncReceived();
                 }
             } else {
@@ -556,7 +556,7 @@ void QAMFrame::DecodeFrame(FrameData *frm_dec) {
         }
         emit ValidFrameReceived(data_valid_range);
     } else {
-        qDebug() << "[CRC FAIL]";
+        //qDebug() << "[CRC FAIL]";
         emit CrcReceived(false);
     }
 }

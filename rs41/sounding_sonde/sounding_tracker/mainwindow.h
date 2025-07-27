@@ -11,6 +11,9 @@
 #include <QMap>
 #include <QLocale>
 #include <QDoubleValidator>
+#include <QFileDialog>
+#include <QFile>
+#include <QTextStream>
 #include "QHexView/qhexview.h"
 #include "qamframe.h"
 #include "qsondehub.h"
@@ -83,6 +86,10 @@ private slots:
 
     void on_CX_habhubEnable_stateChanged(int arg1);
 
+    void on_PB_dirSelect_clicked();
+
+    void on_CX_logFileEnable_stateChanged(int arg1);
+
 private:
     // vars
     Ui::MainWindow *ui = nullptr;
@@ -96,11 +103,15 @@ private:
     QTimer station_position_timer;
     QHexDocument *packet_hex_document = nullptr;
     QSondeHub *sondehub = nullptr;
+    QFile CsvLogFile;
     // funcs
     void RefreshInputAudioDevices(void);
     void LoadSettings(void);
     void SaveSettings(void);
     void UpdateSoundingUI(bool net_upload_enable);
     void ConsoleLog(QString string, MainWindow::LogType_e type_e);
+    bool CreateCsvLogFile(const QString &filename);
+    bool CloseCsvLogFile(void);
+    bool WriteCsvLogEvent(QMap<QString, QString> frame);
 };
 #endif // MAINWINDOW_H

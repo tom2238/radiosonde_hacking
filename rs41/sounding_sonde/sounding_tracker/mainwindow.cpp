@@ -124,7 +124,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QString version(GIT_VERSION);
     QString buildDate = QStringLiteral(__DATE__) + QStringLiteral(" ") + QStringLiteral(__TIME__);
-    qDebug() << "Ver:" << version << ", bd:" << buildDate;
+    //qDebug() << "Ver:" << version << ", bd:" << buildDate;
     ConsoleLog("Start",MainWindow::LOG_INFO);
     ConsoleLog("App: " + QString(APPLICATION_NAME) + ", Ver: " + version + ", bd: " + buildDate, MainWindow::LOG_INFO);
 }
@@ -135,6 +135,10 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow() {
     // Save settings
     SaveSettings();
+    // stop
+    if(ui->PB_stop->isEnabled()) {
+        on_PB_stop_clicked();
+    }
     // Delete UI
     delete ui;
     // Sonde hub
@@ -147,7 +151,7 @@ MainWindow::~MainWindow() {
 void MainWindow::on_PB_start_clicked() {
     QVariant v = ui->CB_InputAudioDevice->currentData();
     QAudioDeviceInfo dev = v.value<QAudioDeviceInfo>();
-    qDebug() << dev.supportedSampleTypes();
+    //qDebug() << dev.supportedSampleTypes();
 
     QAudioFormat format;
     format.setSampleRate(48000);
@@ -190,6 +194,14 @@ void MainWindow::on_PB_start_clicked() {
     ui->LE_GS_antenna->setEnabled(false);
     ui->LE_GS_comment->setEnabled(false);
     ui->LE_GS_radioType->setEnabled(false);
+    ui->LE_dirSelect->setEnabled(false);
+    ui->PB_dirSelect->setEnabled(false);
+
+    if(ui->CX_logFileEnable->isChecked()) {
+        QDateTime dt = QDateTime::currentDateTime();
+        QString filename(QString(APPLICATION_NAME) + "_" + dt.toString("yyyy.MM.dd_HH-mm-ss"));
+        CreateCsvLogFile(ui->LE_dirSelect->text() + "/" + filename + ".csv");
+    }
 
     ConsoleLog("Start decoder success",MainWindow::LOG_INFO);
 }
@@ -227,6 +239,7 @@ void MainWindow::processAudioIn() {
  * @param s
  */
 void MainWindow::stateChangeAudioIn(QAudio::State s) {
+    Q_UNUSED(s);
     //qDebug() << "State change: " << s;
 }
 
@@ -250,6 +263,9 @@ void MainWindow::on_PB_stop_clicked() {
     ui->LE_GS_antenna->setEnabled(true);
     ui->LE_GS_comment->setEnabled(true);
     ui->LE_GS_radioType->setEnabled(true);
+    ui->LE_dirSelect->setEnabled(true);
+    ui->PB_dirSelect->setEnabled(true);
+    CloseCsvLogFile();
     ConsoleLog("Stop decoder success",MainWindow::LOG_INFO);
 }
 
@@ -282,6 +298,7 @@ void MainWindow::LoadSettings(void) {
     // Feed
     bool aprs_en = application_setting.value("Feed/APRS","false").toBool();
     bool habhub_en = application_setting.value("Feed/SondeHub","false").toBool();
+    bool logfile_en = application_setting.value("Feed/LogFile","false").toBool();
     if(aprs_en) {
         ui->CX_aprsEnable->setCheckState(Qt::CheckState::Checked);
     } else {
@@ -292,6 +309,13 @@ void MainWindow::LoadSettings(void) {
     } else {
         ui->CX_habhubEnable->setCheckState(Qt::CheckState::Unchecked);
     }
+    if(logfile_en) {
+        ui->CX_logFileEnable->setCheckState(Qt::CheckState::Checked);
+    } else {
+        ui->CX_logFileEnable->setCheckState(Qt::CheckState::Unchecked);
+    }
+    // Log directory
+    ui->LE_dirSelect->setText(application_setting.value("Data/Directory",".").toString());
 }
 
 /**
@@ -309,6 +333,9 @@ void MainWindow::SaveSettings(void) {
     // Feed
     application_setting.setValue("Feed/APRS",ui->CX_aprsEnable->isChecked());
     application_setting.setValue("Feed/SondeHub",ui->CX_habhubEnable->isChecked());
+    application_setting.setValue("Feed/LogFile",ui->CX_logFileEnable->isChecked());
+    // Log directory
+    application_setting.setValue("Data/Directory",ui->LE_dirSelect->text());
 }
 
 /**
@@ -479,6 +506,21 @@ void MainWindow::UpdateSoundingUI(bool net_upload_enable) {
             sondehub->TelemetryUpload(rec_data, dt);
         }
     }
+    // Send and save to file
+    if(net_upload_enable) {
+        if(ui->CX_logFileEnable->isChecked()) {
+            bool fileOp = WriteCsvLogEvent(rec_data);
+            // False, write is ok
+            if(fileOp) {
+                // True, file not open, create
+                QDateTime dt = QDateTime::currentDateTime();
+                QString filename(QString(APPLICATION_NAME) + "_" + dt.toString("yyyy.MM.dd_HH-mm-ss"));
+                CreateCsvLogFile(ui->LE_dirSelect->text() + "/" + filename + ".csv");
+                // Write data
+                WriteCsvLogEvent(rec_data);
+            }
+        }
+    }
 
 }
 
@@ -624,11 +666,109 @@ void MainWindow::on_CX_habhubEnable_stateChanged(int arg1) {
     if(arg1 == Qt::Unchecked) {
         // Unchecked
         station_position_timer.stop();
+        ConsoleLog("SondeHub upload disable",MainWindow::LOG_INFO);
     } else {
         // Checked or partialy checked
         station_position_timer.start();
         if(sondehub) {
             sondehub->StationPositionUpload();
         }
+        ConsoleLog("SondeHub upload enable",MainWindow::LOG_INFO);
     }
+}
+
+/**
+ * @brief MainWindow::on_PB_dirSelect_clicked
+ */
+void MainWindow::on_PB_dirSelect_clicked() {
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    // Current dir
+    QString oldDir = ui->LE_dirSelect->text();
+    QString dir = QFileDialog::getExistingDirectory(this, "", oldDir,QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+    if(dir.length() != 0) {
+        application_setting.setValue("Data/Directory",ui->LE_dirSelect->text());
+        ui->LE_dirSelect->setText(dir);
+    }
+}
+
+/**
+ * @brief MainWindow::CreateCsvLogFile
+ * @param filename
+ * @return
+ */
+bool MainWindow::CreateCsvLogFile(const QString &filename) {
+    // is not opened
+    if(!CsvLogFile.isOpen()) {
+        CsvLogFile.setFileName(filename);
+        ConsoleLog("CSV data log file create: " + filename, MainWindow::LOG_INFO);
+        if(CsvLogFile.open(QIODevice::Append | QIODevice::Text)) {
+            // Open is OK
+            // Write header
+            QTextStream stream(&CsvLogFile);
+            QString sep(";");
+            stream << "Valid [-]" << sep << "GPS date [YYYY.MM.DD]" << sep << "GPS time [hh:mm:ss]" << sep << "Frame count [-]"\
+                   << sep << "Sonde ID" << sep << "GPS Latitude [deg]" << sep << "GPS Longitude [deg]" << sep << "GPS Altitude [m]" \
+                   << sep << "GPS ground speed [m/s]" << sep << "GPS vertical speed [m/s]" << sep << "GPS heading" \
+                   << sep << "GPS numSV [-]" << sep << "Batt. voltage [V]" << sep << "Ext. temperature [degsC]" \
+                   << sep << "Frequency [MHz]" \
+                   << sep << Qt::endl;
+            stream.flush();
+            return false;
+        } else {
+            // Open failed
+            ConsoleLog("CSV data log create error: " + CsvLogFile.errorString(),MainWindow::LOG_WARNING);
+        }
+    } else {
+        return true;
+    }
+    return true;
+}
+
+/**
+ * @brief MainWindow::CloseCsvLogFile
+ * @return
+ */
+bool MainWindow::CloseCsvLogFile(void) {
+    if(CsvLogFile.isOpen()) {
+        CsvLogFile.close();
+        ConsoleLog("CSV data close success",MainWindow::LOG_INFO);
+        return false;
+    }
+    ConsoleLog("CSV data log close error: " + CsvLogFile.errorString(),MainWindow::LOG_WARNING);
+    return true;
+}
+
+/**
+ * @brief MainWindow::WriteCsvLogEvent
+ * @param frame
+ * @return
+ */
+bool MainWindow::WriteCsvLogEvent(QMap<QString, QString> frame) {
+    if(CsvLogFile.isOpen()) {
+        QTextStream stream(&CsvLogFile);
+        QString sep(";");
+        stream << frame.value("VALID").toInt() << sep << frame.value("GPS_YEAR") << "." << frame.value("GPS_MONTH") \
+               << "." << frame.value("GPS_DAY") << sep << frame.value("GPS_HOUR") << ":" << frame.value("GPS_MINUTE") \
+               << ":" << frame.value("GPS_SECOND") << sep << frame.value("FRAME_COUNT") << sep << frame.value("SONDE_ID") \
+               << sep << frame.value("GPS_LAT") << sep << frame.value("GPS_LON") << sep << frame.value("GPS_ALT") \
+               << sep << frame.value("GPS_GROUNDSPEED") << sep << frame.value("GPS_CLIMBING") \
+               << sep << frame.value("GPS_HEADING") << sep << frame.value("GPS_NUMSV") << sep << frame.value("ONBOARD_VOLTAGE") \
+               << sep << frame.value("TEMPERATURE_MAIN") << sep << frame.value("TX_FREQUENCY") \
+               << sep << Qt::endl;
+        stream.flush();
+        return false;
+    } else {
+        ConsoleLog("CSV data log event write error: " + CsvLogFile.errorString(),MainWindow::LOG_WARNING);
+        return true;
+    }
+}
+
+/**
+ * @brief MainWindow::on_CX_logFileEnable_stateChanged
+ * @param arg1
+ */
+void MainWindow::on_CX_logFileEnable_stateChanged(int arg1) {
+    Q_UNUSED(arg1);
+    QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
+    application_setting.setValue("Feed/LogFile",ui->CX_logFileEnable->isChecked());
 }

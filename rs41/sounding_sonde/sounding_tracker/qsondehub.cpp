@@ -130,7 +130,7 @@ void QSondeHub::StationPositionUpload(void) {
  * @param frame
  */
 void QSondeHub::TelemetryUpload(QMap<QString, QString> frame, QDateTime timeReceived) {
-    qDebug() << "Valid frame" << frame.value("VALID").toUInt();
+    //qDebug() << "Valid frame" << frame.value("VALID").toUInt();
     // We have invalid data then return
     if(frame.value("VALID").toUInt() == 0) {
         return;
