@@ -17,6 +17,7 @@
 #include "QHexView/qhexview.h"
 #include "qamframe.h"
 #include "qsondehub.h"
+#include "qcustomplot.h"
 
 #define ORGANIZATION_NAME "tom2238"
 #define ORGANIZATION_DOMAIN "github.com/tom2238"

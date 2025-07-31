@@ -1,4 +1,4 @@
-QT       += core gui multimedia network
+QT       += core gui multimedia network printsupport
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -31,6 +31,7 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     qamframe.cpp \
+    qcustomplot.cpp \
     qsondehub.cpp \
     ssfrs.cpp
 
@@ -38,6 +39,7 @@ HEADERS += \
     amframe.h \
     mainwindow.h \
     qamframe.h \
+    qcustomplot.h \
     qsondehub.h \
     ssfrs.h
 
