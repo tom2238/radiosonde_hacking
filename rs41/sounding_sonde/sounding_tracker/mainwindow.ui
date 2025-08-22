@@ -718,7 +718,22 @@
           <item row="0" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_3">
             <item>
-             <widget class="QSlider" name="horizontalSlider_2">
+             <widget class="QSlider" name="HS_timeSelect">
+              <property name="minimum">
+               <number>300</number>
+              </property>
+              <property name="maximum">
+               <number>3600</number>
+              </property>
+              <property name="singleStep">
+               <number>60</number>
+              </property>
+              <property name="pageStep">
+               <number>600</number>
+              </property>
+              <property name="value">
+               <number>600</number>
+              </property>
               <property name="orientation">
                <enum>Qt::Horizontal</enum>
               </property>
@@ -726,6 +741,15 @@
             </item>
             <item>
              <widget class="QSlider" name="horizontalSlider">
+              <property name="maximum">
+               <number>3600</number>
+              </property>
+              <property name="singleStep">
+               <number>60</number>
+              </property>
+              <property name="pageStep">
+               <number>600</number>
+              </property>
               <property name="orientation">
                <enum>Qt::Horizontal</enum>
               </property>
@@ -742,6 +766,9 @@
              <layout class="QVBoxLayout" name="verticalLayout">
               <item>
                <widget class="QSplitter" name="splitter_3">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
                 <widget class="QGroupBox" name="groupBox">
                  <property name="title">
                   <string>Teplota</string>

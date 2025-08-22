@@ -14,6 +14,7 @@
 #include <QFileDialog>
 #include <QFile>
 #include <QTextStream>
+#include <QVector>
 #include "QHexView/qhexview.h"
 #include "qamframe.h"
 #include "qsondehub.h"
@@ -91,6 +92,8 @@ private slots:
 
     void on_CX_logFileEnable_stateChanged(int arg1);
 
+    void on_HS_timeSelect_valueChanged(int value);
+
 private:
     // vars
     Ui::MainWindow *ui = nullptr;
@@ -105,6 +108,13 @@ private:
     QHexDocument *packet_hex_document = nullptr;
     QSondeHub *sondehub = nullptr;
     QFile CsvLogFile;
+    // Data storage
+    QVector<QCPGraphData> qcp_altitude_data;
+    QVector<QCPGraphData> qcp_climbing_data;
+    QVector<QCPGraphData> qcp_groundSpeed_data;
+    QVector<QCPGraphData> qcp_temperatureEx_data;
+    uint qcp_timeLow;
+    uint qcp_timeHigh;
     // funcs
     void RefreshInputAudioDevices(void);
     void LoadSettings(void);

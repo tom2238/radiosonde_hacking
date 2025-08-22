@@ -1,6 +1,9 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
+Ui::MainWindow *main_ui;
+
 /**
  * @brief MainWindow::MainWindow
  * @param parent
@@ -11,6 +14,11 @@ MainWindow::MainWindow(QWidget *parent)
 {
     // Setup
     ui->setupUi(this);
+    main_ui = ui;
+
+    // Set handler
+    qInstallMessageHandler(messageHandler);
+
     // UI name
     this->setWindowTitle(APPLICATION_DISPLAY_NAME);
 
@@ -113,20 +121,67 @@ MainWindow::MainWindow(QWidget *parent)
     ui->PB_stop->setEnabled(false);
     ui->PB_start->setEnabled(true);
 
-    // Get decoded packet and update UI
-    UpdateSoundingUI(false);
-
     // Upload station position
     if(ui->CX_habhubEnable->isChecked()) {
         sondehub->StationPositionUpload();
         station_position_timer.start();
     }
 
+    // Plot setup
+    // Alt
+    ui->QCP_altitude->yAxis->setLabel("Výška [m]");
+    ui->QCP_altitude->clearGraphs();
+    ui->QCP_altitude->addGraph();
+    ui->QCP_altitude->graph()->setPen(QPen(Qt::blue));
+    ui->QCP_altitude->graph()->setLineStyle(QCPGraph::lsLine);
+    ui->QCP_altitude->graph()->data()->set(qcp_altitude_data);
+    ui->QCP_altitude->yAxis->setRange(0.0,3000.0);
+
+    // Climbing
+    ui->QCP_climbing->yAxis->setLabel("Stoupání [m/s]");
+    ui->QCP_climbing->clearGraphs();
+    ui->QCP_climbing->addGraph();
+    ui->QCP_climbing->graph()->setPen(QPen(Qt::blue));
+    ui->QCP_climbing->graph()->setLineStyle(QCPGraph::lsLine);
+    ui->QCP_climbing->graph()->data()->set(qcp_climbing_data);
+    ui->QCP_climbing->yAxis->setRange(-5.0,5.0);
+
+    // Ground speed
+    ui->QCP_groundSpeed->yAxis->setLabel("Rychlost [m/s]");
+    ui->QCP_groundSpeed->clearGraphs();
+    ui->QCP_groundSpeed->addGraph();
+    ui->QCP_groundSpeed->graph()->setPen(QPen(Qt::blue));
+    ui->QCP_groundSpeed->graph()->setLineStyle(QCPGraph::lsLine);
+    ui->QCP_groundSpeed->graph()->data()->set(qcp_groundSpeed_data);
+    ui->QCP_groundSpeed->yAxis->setRange(-5.0,5.0);
+
+    // Temperature
+    ui->QCP_temperatureEx->yAxis->setLabel("Teplota [°C]");
+    ui->QCP_temperatureEx->clearGraphs();
+    ui->QCP_temperatureEx->addGraph();
+    ui->QCP_temperatureEx->graph()->setPen(QPen(Qt::blue));
+    ui->QCP_temperatureEx->graph()->setLineStyle(QCPGraph::lsLine);
+    ui->QCP_temperatureEx->graph()->data()->set(qcp_temperatureEx_data);
+    ui->QCP_temperatureEx->yAxis->setRange(-120.0,60.0);
+
+    // X axis time
+    QSharedPointer<QCPAxisTickerDateTime> timeTicker(new QCPAxisTickerDateTime);
+    timeTicker->setDateTimeFormat("hh:mm");
+    ui->QCP_altitude->xAxis->setTicker(timeTicker);
+    ui->QCP_climbing->xAxis->setTicker(timeTicker);
+    ui->QCP_groundSpeed->xAxis->setTicker(timeTicker);
+    ui->QCP_temperatureEx->xAxis->setTicker(timeTicker);
+
+
+    // Get decoded packet and update UI
+    UpdateSoundingUI(false);
+
     QString version(GIT_VERSION);
     QString buildDate = QStringLiteral(__DATE__) + QStringLiteral(" ") + QStringLiteral(__TIME__);
     //qDebug() << "Ver:" << version << ", bd:" << buildDate;
     ConsoleLog("Start",MainWindow::LOG_INFO);
     ConsoleLog("App: " + QString(APPLICATION_NAME) + ", Ver: " + version + ", bd: " + buildDate, MainWindow::LOG_INFO);
+
 }
 
 /**
@@ -196,6 +251,24 @@ void MainWindow::on_PB_start_clicked() {
     ui->LE_GS_radioType->setEnabled(false);
     ui->LE_dirSelect->setEnabled(false);
     ui->PB_dirSelect->setEnabled(false);
+
+    // Graph delete data
+    qcp_altitude_data.clear();
+    qcp_climbing_data.clear();
+    qcp_groundSpeed_data.clear();
+    qcp_temperatureEx_data.clear();
+
+    QDateTime dt = QDateTime::currentDateTime();
+    qcp_timeLow = dt.toTime_t();
+    qcp_timeHigh = qcp_timeLow + 60;
+    ui->HS_timeSelect->setMaximum(qcp_timeHigh);
+    ui->HS_timeSelect->setMinimum(qcp_timeLow);
+    double timeNow = qcp_timeLow;
+
+    ui->QCP_altitude->xAxis->setRangeLower(timeNow);
+    ui->QCP_climbing->xAxis->setRangeLower(timeNow);
+    ui->QCP_groundSpeed->xAxis->setRangeLower(timeNow);
+    ui->QCP_temperatureEx->xAxis->setRangeLower(timeNow);
 
     if(ui->CX_logFileEnable->isChecked()) {
         QDateTime dt = QDateTime::currentDateTime();
@@ -475,6 +548,7 @@ void MainWindow::packet_received(void) {
  */
 void MainWindow::UpdateSoundingUI(bool net_upload_enable) {
     QMap<QString, QString> rec_data;
+    QDateTime dt = QDateTime::currentDateTime();
     rec_data = frame_decoder.GetDecodedFrame();
     QString gps_year = rec_data.value("GPS_YEAR");
     QString gps_month = rec_data.value("GPS_MONTH");
@@ -499,6 +573,39 @@ void MainWindow::UpdateSoundingUI(bool net_upload_enable) {
     ui->LB_rx_frequency->setText(rec_data.value("TX_FREQUENCY") + " MHz");
     ui->LB_rx_power->setText(rec_data.value("TX_POWER") + " dBm");
 
+    // Update graph
+    qcp_timeHigh = dt.toTime_t();
+    double timeNow = qcp_timeHigh;
+    ui->HS_timeSelect->setMaximum(qcp_timeHigh);
+
+    QCPGraphData graphPoint(timeNow,rec_data.value("GPS_ALT").toDouble());
+    qcp_altitude_data.append(graphPoint);
+    ui->QCP_altitude->graph()->data()->set(qcp_altitude_data);
+    ui->QCP_altitude->replot();
+    ui->QCP_altitude->xAxis->setRangeUpper(timeNow);
+    ui->QCP_altitude->xAxis->rescale();
+
+    graphPoint.value = rec_data.value("GPS_CLIMBING").toDouble();
+    qcp_climbing_data.append(graphPoint);
+    ui->QCP_climbing->graph()->data()->set(qcp_climbing_data);
+    ui->QCP_climbing->replot();
+    ui->QCP_climbing->xAxis->setRangeUpper(timeNow);
+    ui->QCP_climbing->xAxis->rescale();
+
+    graphPoint.value = rec_data.value("GPS_GROUNDSPEED").toDouble();
+    qcp_groundSpeed_data.append(graphPoint);
+    ui->QCP_groundSpeed->graph()->data()->set(qcp_groundSpeed_data);
+    ui->QCP_groundSpeed->replot();
+    ui->QCP_groundSpeed->xAxis->setRangeUpper(timeNow);
+    ui->QCP_groundSpeed->xAxis->rescale();
+
+    graphPoint.value = rec_data.value("TEMPERATURE_MAIN").toDouble();
+    qcp_temperatureEx_data.append(graphPoint);
+    ui->QCP_temperatureEx->graph()->data()->set(qcp_temperatureEx_data);
+    ui->QCP_temperatureEx->replot();
+    ui->QCP_temperatureEx->xAxis->setRangeUpper(timeNow);
+    ui->QCP_temperatureEx->xAxis->rescale();
+
     // Send data to sondehub
     if(net_upload_enable) {
         if(ui->CX_habhubEnable->isChecked()) {
@@ -513,7 +620,6 @@ void MainWindow::UpdateSoundingUI(bool net_upload_enable) {
             // False, write is ok
             if(fileOp) {
                 // True, file not open, create
-                QDateTime dt = QDateTime::currentDateTime();
                 QString filename(QString(APPLICATION_NAME) + "_" + dt.toString("yyyy.MM.dd_HH-mm-ss"));
                 CreateCsvLogFile(ui->LE_dirSelect->text() + "/" + filename + ".csv");
                 // Write data
@@ -734,7 +840,6 @@ bool MainWindow::CloseCsvLogFile(void) {
         ConsoleLog("CSV data close success",MainWindow::LOG_INFO);
         return false;
     }
-    ConsoleLog("CSV data log close error: " + CsvLogFile.errorString(),MainWindow::LOG_WARNING);
     return true;
 }
 
@@ -771,4 +876,44 @@ void MainWindow::on_CX_logFileEnable_stateChanged(int arg1) {
     Q_UNUSED(arg1);
     QSettings application_setting(ORGANIZATION_NAME, APPLICATION_NAME);
     application_setting.setValue("Feed/LogFile",ui->CX_logFileEnable->isChecked());
+}
+
+/**
+ * @brief messageHandler
+ * @param type
+ * @param context
+ * @param msg
+ */
+void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
+    // Open stream file writes
+    QString out;
+    // Write the date of recording
+    out.append(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz "));
+    // By type determine to what level belongs message
+    switch (type)
+    {
+    case QtInfoMsg:     out.append("INF "); break;
+    case QtDebugMsg:    out.append("DBG "); break;
+    case QtWarningMsg:  out.append("WRN "); break;
+    case QtCriticalMsg: out.append("CRT "); break;
+    case QtFatalMsg:    out.append("FTL "); break;
+    }
+    // Write to the output category of the message and the message itself
+    out.append(context.category);
+    out.append(": ");
+    out.append(msg);
+    out.append("\n");
+
+    QTextCursor TE_cursor(main_ui->TE_logArea->textCursor());
+    TE_cursor.movePosition(QTextCursor::End);
+    main_ui->TE_logArea->setTextCursor(TE_cursor);
+    main_ui->TE_logArea->insertPlainText(out);
+}
+
+/**
+ * @brief MainWindow::on_HS_timeSelect_valueChanged
+ * @param value
+ */
+void MainWindow::on_HS_timeSelect_valueChanged(int value) {
+    qDebug() << "HS timeselect change: " << value;
 }
